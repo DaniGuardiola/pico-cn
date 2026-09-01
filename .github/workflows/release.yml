@@ -31,8 +31,10 @@ jobs:
           node-version: 24
           cache: pnpm
           registry-url: https://registry.npmjs.org
-      # trusted publishing needs a recent npm on the runner
-      - run: npm install -g npm@latest
+      # trusted publishing needs npm >= 11.5.1 — pinned to the 11 line: npm 12
+      # changed `npm info --json` to emit an array, which crashes the pnpm
+      # registry probe in @changesets/cli 3.0.1 (pnpm info delegates to npm)
+      - run: npm install -g npm@11
       - run: pnpm install --frozen-lockfile
       - name: create version PR or publish
         uses: changesets/action@v1
