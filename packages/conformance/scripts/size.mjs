@@ -52,12 +52,15 @@ for (const r of rows)
 
 // Three-part gate encoding the shipped size claims:
 //   1. parse cost (raw minified) strictly smaller than cnfast — the README's
-//      "least JavaScript to parse" claim; currently ~13% under
-//   2. transfer (min+gzip) within 8% of released cnfast. History: the 5%
-//      band was retired 2026-09-01 when the arity-front arg cache and the
+//      "least JavaScript to parse" claim. Vs cnfast 0.2.0 (measured
+//      2026-09-02) parse is ~35% under; the earlier "~13% under" figure was
+//      vs a smaller pre-0.2.0 release
+//   2. transfer (min+gzip) within 8% of cnfast. History: the 5% band was
+//      retired 2026-09-01 when the arity-front arg cache and the
 //      two-generation doorkeeper spent ~210 B of gzip to make the 30×
-//      headline reproducible and fix a 6-15× real-repo corpus regression;
-//      gzip sits ~7% over cnfast while parse stays well under
+//      headline reproducible and fix a 6-15× real-repo corpus regression.
+//      Vs cnfast 0.2.0 gzip is ~25% under, so this band is currently slack;
+//      the absolute budget below is the binding constraint
 //   3. absolute transfer budget: 10,550 B (creep tripwire); raised from
 //      10,500 on 2026-09-01 for the int32 epoch guard (~20 B)
 const ours = rows[0]
@@ -83,3 +86,35 @@ if (fail) process.exit(1)
 console.log(
   `size gate ok: parse ${ours.min} < ${cnfast.min}; gzip ${ours.gz} (cnfast ${cnfast.gz}, band ${Math.round(cnfast.gz * 1.08)}); budget 10550`
 )
+
+// ---------------------------------------------------------------------------
+// Size experiments log (metric: min+gzip of the default entry). Kept here so
+// nobody re-runs these blind — gzip is already near-optimal on the table
+// text, which kills most clever encodings.
+//
+// Reverted:
+// - interned unique-tail pool + per-set id streams: +700 B
+// - lexicographic set reordering for gzip locality: +189 B
+// - span-scanning numeric validators to kill slices: +144 B, no speed gain
+//   (the token memo already absorbs repeat validation)
+//
+// Kept:
+// - unifying the twJoin/clsx join layers into one resolver: −60 B
+// - exporting tables as one default object instead of named exports: −90 B
+//   of bundler glue
+// - second-chance memo + adaptive cache logic: +40 B for the cold-path
+//   speed wins (the adaptive off-window was later replaced by doorkeeper
+//   admission, which fixed its failure mode — off-windows blocked large
+//   recurring working sets from ever warming the cache)
+// - sequence-predicting arg cache + doorkeeper-admitted whole-string cache
+//   + run-slice emission: +460 B for 30× on the dominant component call and
+//   49×/11.7× on the 53-repo corpus replay
+// - fused FNV token hash + tagged doorkeeper + direct claim array: −22 B
+//   and 1.6×/1.3× on the cold workloads — but a single-generation tagged
+//   filter starved recurring working sets bigger than itself (6–15× slower
+//   on real-repo replays; caught by speedlab, not the row benches — hence
+//   the `workset` workload). Kept only with the two-generation filter below.
+// - two-generation doorkeeper + 8192-entry cache + arity fronts for the arg
+//   cache: +206 B for a reproducible 30× headline (10.4 ns predicted call),
+//   restored corpus replays, and best-yet cold rows
+// ---------------------------------------------------------------------------
