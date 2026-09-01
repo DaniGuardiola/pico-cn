@@ -48,8 +48,7 @@ export function Button({
 
 ### Existing shadcn/ui project
 
-Your components already import `cn` from `@/lib/utils`. Swap that file's
-body and every component upgrades at once:
+Your components already import `cn` from `@/lib/utils`. Replace the wrapper with the one from `cn`.
 
 ```diff
 // lib/utils.ts
