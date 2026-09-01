@@ -95,6 +95,14 @@ entirely. The headline rounds down.
 
 ² compared to `clsx` + `tailwind-merge`.
 
+### Real repositories
+
+The rows above are synthetic. `pnpm bench:corpus` replays every `cn()` call
+harvested from 58 open source codebases (144,265 calls) through each
+library, one isolated process per library and repository, and prints the
+per-repository table. Geometric mean across the 58 repositories: `cn` is
+**37× faster** than `clsx` + `tailwind-merge`.
+
 `cn` ships the least JavaScript to parse in every setup, 26 KB minified.
 
 If you want an even smaller bundle with the same performance, see
