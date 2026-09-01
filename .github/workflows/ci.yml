@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: [20, 22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run typecheck
+      - run: pnpm run build
+      - run: node packages/conformance/tests/correctness.mjs
+      - run: node packages/conformance/tests/fuzz.mjs
+        env:
+          FUZZ_ITERS: '300000'
+      - run: node packages/conformance/tests/custom-config.mjs
+      - run: node packages/conformance/tests/cli.mjs
+      - name: size gate (default entry must stay smaller than cnfast)
+        run: node packages/conformance/scripts/size.mjs
+
+  freshness:
+    # generated artifacts (vendored config, default tables) must match what the
+    # committed compiler + tailwind-merge devDependency produce
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run build
+      - run: node packages/conformance/scripts/vendor-config.mjs
+      - run: node packages/cn/scripts/compile-tables.mjs
+      - run: git diff --exit-code packages/cn/src/default-config.generated.ts packages/cn/src/tables.generated.ts

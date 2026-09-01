@@ -1,0 +1,789 @@
+<meta charset="utf-8" />
+<title>cn speedlab</title>
+<link
+  rel="stylesheet"
+  href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=Public+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+/>
+<style>
+  :root {
+    --bg: #f7f8f7;
+    --surface: #ffffff;
+    --ink: #17201c;
+    --ink-2: #55605a;
+    --line: #dde2df;
+    --line-soft: #e9ecea;
+    --cn: #0b7a63;
+    --cn-soft: rgba(11, 122, 99, 0.1);
+    --cnfast: #5a6472;
+    --pair: #8a8074;
+    --loss: #b4552d;
+    --loss-soft: rgba(180, 85, 45, 0.1);
+    --badge-bg: #eef1ef;
+    --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+    --sans: "Public Sans", system-ui, -apple-system, sans-serif;
+    --disp: "Archivo", "Public Sans", system-ui, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101613;
+      --surface: #161d19;
+      --ink: #e8ece9;
+      --ink-2: #9aa8a1;
+      --line: #2a332e;
+      --line-soft: #222a26;
+      --cn: #3fbfa4;
+      --cn-soft: rgba(63, 191, 164, 0.13);
+      --cnfast: #8b96a5;
+      --pair: #a2988a;
+      --loss: #d97b52;
+      --loss-soft: rgba(217, 123, 82, 0.14);
+      --badge-bg: #1d2521;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101613;
+    --surface: #161d19;
+    --ink: #e8ece9;
+    --ink-2: #9aa8a1;
+    --line: #2a332e;
+    --line-soft: #222a26;
+    --cn: #3fbfa4;
+    --cn-soft: rgba(63, 191, 164, 0.13);
+    --cnfast: #8b96a5;
+    --pair: #a2988a;
+    --loss: #d97b52;
+    --loss-soft: rgba(217, 123, 82, 0.14);
+    --badge-bg: #1d2521;
+  }
+  * {
+    box-sizing: border-box;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 0 24px 96px;
+  }
+
+  /* masthead */
+  .mast {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--ink);
+  }
+  .mast h1 {
+    font-family: var(--disp);
+    font-weight: 700;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+    margin: 0;
+  }
+  .mast h1 .lab {
+    color: var(--cn);
+  }
+  .env {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-2);
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+  .env b {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .lede {
+    max-width: 62ch;
+    margin: 28px 0 8px;
+    font-size: 16px;
+  }
+  .lede p {
+    margin: 0 0 12px;
+  }
+
+  h2 {
+    font-family: var(--disp);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 56px 0 6px;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  h2 .n {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-2);
+    font-weight: 400;
+    letter-spacing: 0;
+  }
+  .sub {
+    color: var(--ink-2);
+    font-size: 13.5px;
+    margin: 0 0 20px;
+    max-width: 68ch;
+  }
+  .sub code,
+  .lede code {
+    font-family: var(--mono);
+    font-size: 0.92em;
+    background: var(--badge-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+
+  /* results table */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13.5px;
+  }
+  .tblwrap {
+    overflow-x: auto;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--surface);
+  }
+  th {
+    font-family: var(--mono);
+    font-weight: 500;
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+    text-align: right;
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--line);
+    white-space: nowrap;
+  }
+  th:first-child {
+    text-align: left;
+  }
+  td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 13px;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+  }
+  tr:last-child td {
+    border-bottom: none;
+  }
+  td:first-child {
+    text-align: left;
+    font-family: var(--sans);
+    font-size: 13.5px;
+    white-space: normal;
+  }
+  td:first-child small {
+    display: block;
+    color: var(--ink-2);
+    font-size: 12px;
+  }
+  .win {
+    color: var(--cn);
+    font-weight: 600;
+    background: var(--cn-soft);
+  }
+  .lose {
+    color: var(--loss);
+    font-weight: 600;
+    background: var(--loss-soft);
+  }
+  .mult {
+    font-weight: 600;
+  }
+
+  /* live bench */
+  .runbar {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin: 0 0 22px;
+    flex-wrap: wrap;
+  }
+  button#run {
+    font-family: var(--disp);
+    font-weight: 600;
+    font-size: 14px;
+    background: var(--cn);
+    color: var(--bg);
+    border: none;
+    border-radius: 5px;
+    padding: 10px 22px;
+    cursor: pointer;
+  }
+  button#run:hover {
+    filter: brightness(1.08);
+  }
+  button#run:focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 2px;
+  }
+  button#run:disabled {
+    opacity: 0.55;
+    cursor: default;
+  }
+  .status {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+
+  .bench {
+    display: grid;
+    gap: 26px;
+  }
+  .bcase {
+    border-top: 1px solid var(--line);
+    padding-top: 14px;
+  }
+  .bcase h3 {
+    margin: 0 0 2px;
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .bcase .desc {
+    color: var(--ink-2);
+    font-size: 12.5px;
+    margin: 0 0 12px;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 74px 1fr 150px;
+    align-items: center;
+    gap: 12px;
+    margin: 6px 0;
+  }
+  .row .who {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--ink-2);
+  }
+  .track {
+    height: 14px;
+    background: var(--badge-bg);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .fill {
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    transition: width 260ms ease;
+  }
+  .fill.cn {
+    background: var(--cn);
+  }
+  .fill.cnfast {
+    background: var(--cnfast);
+  }
+  .fill.pair {
+    background: var(--pair);
+  }
+  .row .val {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .row .val b {
+    font-weight: 600;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fill {
+      transition: none;
+    }
+  }
+
+  /* bundle bars */
+  .sizegrid {
+    display: grid;
+    gap: 8px;
+  }
+  .sizerow {
+    display: grid;
+    grid-template-columns: 210px 1fr 120px;
+    gap: 12px;
+    align-items: center;
+  }
+  .sizerow .who {
+    font-size: 13px;
+  }
+  .sizerow .who small {
+    color: var(--ink-2);
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .foot {
+    margin-top: 64px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: 12.5px;
+    max-width: 70ch;
+  }
+  .foot code {
+    font-family: var(--mono);
+    background: var(--badge-bg);
+    padding: 1px 5px;
+    border-radius: 3px;
+  }
+  .foot p {
+    margin: 0 0 8px;
+  }
+</style>
+
+<div class="wrap">
+  <div class="mast">
+    <h1>cn <span class="lab">speedlab</span></h1>
+    <div class="env">
+      <span>engine <b id="engine">…</b></span>
+      <span>cnfast variadic cache <b id="cachestate">…</b></span>
+    </div>
+  </div>
+
+  <p class="sub" style="margin-top: 10px"><!--META--></p>
+
+  <div class="lede">
+    <p>
+      <b>cn</b> is a new engine for Tailwind class merging. This page compares
+      it against <code>clsx</code> + <code>tailwind-merge</code>, which is what
+      most projects run today, and against <code>cnfast</code>.
+    </p>
+    <p>
+      The first table is our committed reference run. The second section runs
+      the same workloads <em>live in your browser</em>, on your hardware, with
+      all three libraries bundled into this page.
+    </p>
+  </div>
+
+  <h2>
+    Reference run
+    <span class="n">node 24 · isolated processes · best of 5</span>
+  </h2>
+  <p class="sub">
+    Each library × workload pair ran in its own process with its own warmup. The
+    last column is cn against <code>clsx</code> + <code>tailwind-merge</code>.
+  </p>
+  <div class="tblwrap">
+    <table>
+      <thead>
+        <tr>
+          <th>workload</th>
+          <th>clsx + tailwind-merge</th>
+          <th>cnfast</th>
+          <th>cn</th>
+          <th>faster</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!--REFERENCE_ROWS-->
+      </tbody>
+    </table>
+  </div>
+
+  <h2>
+    Run it in your browser
+    <span class="n">live · your hardware · your engine</span>
+  </h2>
+  <p class="sub">
+    All three libraries are bundled into this page. Each workload warms up, then
+    takes three timed readings per library and keeps the best. In-page runs
+    share one JS heap, so treat these as directional; the reference run above is
+    the controlled measurement.
+  </p>
+  <div class="runbar">
+    <button id="run">Run benchmarks</button>
+    <span class="status" id="status">idle</span>
+  </div>
+  <div class="bench" id="bench"></div>
+
+  <!--REPO_SECTION-->
+
+  <h2>Bundle size <span class="n">min+gzip · whole import graph</span></h2>
+  <p class="sub">
+    Transfer is what you ship over the network. Parse is what the device
+    compiles. Lower is better. The row where cn is larger is shown honestly.
+  </p>
+  <div class="tblwrap">
+    <table>
+      <thead>
+        <tr>
+          <th>setup</th>
+          <th>transfer</th>
+          <th>parse (minified)</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!--SIZE_ROWS-->
+      </tbody>
+    </table>
+  </div>
+
+  <div class="foot">
+    <p>
+      Reference methodology: every implementation × workload pair in an isolated
+      child process, own warmup, best of 5 timed blocks. Reproduce with
+      <code>npm run bench</code> in the cn repository.
+    </p>
+    <p>
+      Libraries bundled in this page: cn 0.1.0 · cnfast 0.1.0 · tailwind-merge
+      3.6.0 · clsx 2.x. Output parity between cn and tailwind-merge is enforced
+      by 356,000 differential tests in CI.
+    </p>
+    <p>
+      Design of this page follows the format of cnfast's benchmark page by Aiden
+      Bai.
+    </p>
+  </div>
+</div>
+
+<script>
+  /*__LIBS__*/
+</script>
+<script>
+  (() => {
+    const libs = window.__LIBS;
+
+    // engine detection (same trick cnfast uses internally)
+    const err = new Error();
+    const engine =
+      "line" in err
+        ? "JavaScriptCore"
+        : "lineNumber" in err
+          ? "SpiderMonkey"
+          : "V8";
+    document.getElementById("engine").textContent = engine;
+    document.getElementById("cachestate").textContent =
+      engine === "V8" ? "active" : "inactive (non-V8)";
+
+    // ---- corpora (seeded, deterministic) ----
+    let seed = 0xc0ffee;
+    const rnd = () => {
+      seed ^= seed << 13;
+      seed >>>= 0;
+      seed ^= seed >> 17;
+      seed ^= seed << 5;
+      seed >>>= 0;
+      return seed / 4294967296;
+    };
+    const pick = (a) => a[Math.floor(rnd() * a.length)];
+
+    const base =
+      "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:opacity-50";
+    const variant = "bg-primary text-primary-foreground hover:bg-primary/90";
+    const size = "h-10 px-4 py-2";
+
+    const shortTypical = [
+      "inline-flex items-center justify-center rounded-md text-sm font-medium",
+      "bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2",
+      "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+      "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm",
+      "text-muted-foreground text-sm",
+      "font-semibold leading-none tracking-tight",
+      "absolute right-4 top-4 rounded-sm opacity-70 transition-opacity",
+      "fixed inset-0 z-50 bg-black/80",
+      "grid gap-4 py-4",
+      "flex flex-col space-y-1.5",
+      "p-6 pt-0",
+      "text-lg font-semibold",
+      "mr-2 h-4 w-4",
+      "h-px w-full bg-border",
+      "px-2 py-1 text-xs",
+      "w-full p-4 md:p-6 lg:px-8",
+    ];
+    const arbHeavy = Array.from(
+      { length: 20000 },
+      (_, i) =>
+        "w-[" +
+        i +
+        "px] h-[" +
+        i * 2 +
+        "px] bg-[#" +
+        (i % 4096).toString(16).padStart(3, "0") +
+        "] " +
+        "translate-x-[" +
+        (i % 100) +
+        "%] p-[" +
+        (i % 50) +
+        "rem] text-[" +
+        (10 + (i % 20)) +
+        "px] " +
+        "m-[calc(100%-" +
+        i +
+        "px)] rounded-[" +
+        (i % 24) +
+        "px]",
+    );
+    const vocab = [
+      "flex",
+      "inline-flex",
+      "grid",
+      "block",
+      "items-center",
+      "items-start",
+      "justify-between",
+      "justify-center",
+      "gap-1",
+      "gap-2",
+      "gap-4",
+      "p-1",
+      "p-2",
+      "p-4",
+      "px-2",
+      "px-3",
+      "px-4",
+      "py-1",
+      "py-2",
+      "rounded",
+      "rounded-md",
+      "rounded-lg",
+      "border",
+      "border-input",
+      "bg-background",
+      "bg-primary",
+      "bg-accent",
+      "text-sm",
+      "text-xs",
+      "text-lg",
+      "font-medium",
+      "font-semibold",
+      "text-muted-foreground",
+      "text-primary-foreground",
+      "shadow-sm",
+      "shadow",
+      "transition-colors",
+      "hover:bg-accent",
+      "hover:text-white",
+      "focus:ring-2",
+      "md:flex-row",
+      "md:p-6",
+      "dark:bg-gray-900",
+      "w-full",
+      "h-10",
+      "h-9",
+      "opacity-50",
+      "underline",
+      "truncate",
+      "overflow-hidden",
+      "relative",
+      "absolute",
+    ];
+    const ssr = Array.from({ length: 20000 }, () => {
+      const n = 3 + Math.floor(rnd() * 9);
+      const parts = [];
+      for (let k = 0; k < n; k++) parts.push(pick(vocab));
+      return parts.join(" ");
+    });
+    {
+      const seen = new Set();
+      for (let i = 0; i < ssr.length; i++) {
+        if (seen.has(ssr[i])) ssr[i] += " z-" + i;
+        seen.add(ssr[i]);
+      }
+    }
+    const repeated =
+      "inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm hover:bg-primary/90";
+
+    const workloads = [
+      {
+        id: "component",
+        name: "the call your components make most",
+        desc: "cn(base, variant, condition && extra), stable class strings",
+        run: (fn, deadline) => {
+          let n = 0,
+            sink = 0;
+          while (performance.now() < deadline) {
+            for (let i = 0; i < 2000; i++)
+              sink += fn(base, variant, (n + i) % 2 === 0 && size).length;
+            n += 2000;
+          }
+          return { n, sink };
+        },
+      },
+      {
+        id: "cachehit",
+        name: "same classes as last render",
+        desc: "one string, repeated (cache hit)",
+        run: (fn, deadline) => {
+          let n = 0,
+            sink = 0;
+          while (performance.now() < deadline) {
+            for (let i = 0; i < 5000; i++) sink += fn(repeated).length;
+            n += 5000;
+          }
+          return { n, sink };
+        },
+      },
+      {
+        id: "warm",
+        name: "typical component strings, warm",
+        desc: "16 recurring shadcn-style strings",
+        run: (fn, deadline) => {
+          let n = 0,
+            sink = 0,
+            k = 0;
+          while (performance.now() < deadline) {
+            for (let i = 0; i < 4000; i++) {
+              sink += fn(shortTypical[k]).length;
+              if (++k === shortTypical.length) k = 0;
+            }
+            n += 4000;
+          }
+          return { n, sink };
+        },
+      },
+      {
+        id: "arb",
+        name: "cold render, many arbitrary values",
+        desc: "20,000 unique strings full of arbitrary values",
+        run: (fn, deadline) => {
+          let n = 0,
+            sink = 0,
+            k = 0;
+          while (performance.now() < deadline) {
+            for (let i = 0; i < 500; i++) {
+              sink += fn(arbHeavy[k]).length;
+              if (++k === arbHeavy.length) k = 0;
+            }
+            n += 500;
+          }
+          return { n, sink };
+        },
+      },
+      {
+        id: "ssr",
+        name: "cold render, SSR-style unique strings",
+        desc: "20,000 unique strings from a recurring vocabulary",
+        run: (fn, deadline) => {
+          let n = 0,
+            sink = 0,
+            k = 0;
+          while (performance.now() < deadline) {
+            for (let i = 0; i < 1000; i++) {
+              sink += fn(ssr[k]).length;
+              if (++k === ssr.length) k = 0;
+            }
+            n += 1000;
+          }
+          return { n, sink };
+        },
+      },
+    ];
+
+    const impls = [
+      { id: "pair", label: "clsx+twm", fn: libs.pair },
+      { id: "cnfast", label: "cnfast", fn: libs.cnfast },
+      { id: "cn", label: "cn", fn: libs.cn },
+    ];
+
+    // build the result rows
+    const bench = document.getElementById("bench");
+    const cells = {};
+    for (const w of workloads) {
+      const box = document.createElement("div");
+      box.className = "bcase";
+      box.innerHTML =
+        "<h3>" + w.name + '</h3><p class="desc">' + w.desc + "</p>";
+      for (const imp of impls) {
+        const row = document.createElement("div");
+        row.className = "row";
+        row.innerHTML =
+          '<span class="who">' +
+          imp.label +
+          "</span>" +
+          '<div class="track"><div class="fill ' +
+          imp.id +
+          '"></div></div>' +
+          '<span class="val">—</span>';
+        box.appendChild(row);
+        cells[w.id + ":" + imp.id] = {
+          fill: row.querySelector(".fill"),
+          val: row.querySelector(".val"),
+        };
+      }
+      bench.appendChild(box);
+    }
+
+    const fmt = (ops) =>
+      ops >= 1e6
+        ? (ops / 1e6).toFixed(2) + "M ops/s"
+        : ops >= 1e3
+          ? (ops / 1e3).toFixed(1) + "K ops/s"
+          : Math.round(ops) + " ops/s";
+
+    const yield_ = () => new Promise((r) => setTimeout(r, 0));
+
+    const btn = document.getElementById("run");
+    const status = document.getElementById("status");
+
+    btn.addEventListener("click", async () => {
+      btn.disabled = true;
+      const results = {};
+      try {
+        for (const w of workloads) {
+          results[w.id] = {};
+          for (const imp of impls) {
+            status.textContent = "measuring " + w.id + " · " + imp.label + " …";
+            await yield_();
+            // warmup
+            w.run(imp.fn, performance.now() + 60);
+            await yield_();
+            // 3 timed windows, keep best
+            let best = 0;
+            for (let t = 0; t < 3; t++) {
+              const t0 = performance.now();
+              const { n } = w.run(imp.fn, t0 + 150);
+              const ops = n / ((performance.now() - t0) / 1000);
+              if (ops > best) best = ops;
+              await yield_();
+            }
+            results[w.id][imp.id] = best;
+            cells[w.id + ":" + imp.id].val.textContent = fmt(best);
+            // rescale bars in this workload
+            const max = Math.max(...impls.map((x) => results[w.id][x.id] || 0));
+            for (const x of impls) {
+              const v = results[w.id][x.id];
+              if (v)
+                cells[w.id + ":" + x.id].fill.style.width =
+                  ((100 * v) / max).toFixed(1) + "%";
+            }
+          }
+          // annotate multipliers vs pair
+          const pairOps = results[w.id].pair;
+          for (const x of impls) {
+            if (x.id === "pair") continue;
+            const v = results[w.id][x.id];
+            cells[w.id + ":" + x.id].val.innerHTML =
+              fmt(v) + " · <b>" + (v / pairOps).toFixed(1) + "×</b>";
+          }
+        }
+        status.textContent =
+          "done · " + engine + " · " + navigator.userAgent.split(") ").pop();
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  })();
+</script>

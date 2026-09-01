@@ -1,0 +1,26 @@
+{
+  "name": "cn-workspace",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "build": "pnpm --filter cn run build",
+    "compile-tables": "pnpm --filter cn run compile-tables",
+    "test": "pnpm --filter cn run build && pnpm --filter conformance run test",
+    "test:src": "pnpm --filter conformance run test:src",
+    "bench": "pnpm --filter conformance run bench",
+    "size": "pnpm --filter conformance run size",
+    "vendor-config": "pnpm --filter conformance run vendor-config",
+    "typecheck": "pnpm --filter cn exec tsc",
+    "changeset": "changeset",
+    "release": "pnpm run typecheck && pnpm run test && pnpm run size && changeset publish",
+    "speedlab": "pnpm --filter conformance run speedlab"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "@changesets/changelog-github": "^0.5.1",
+    "@changesets/cli": "^3.0.1"
+  }
+}

@@ -1,0 +1,41 @@
+name: Release
+
+# Changesets flow: pushes to main with pending changesets open (or update) a
+# "Version Packages" PR; merging that PR publishes `cn` to npm with provenance.
+# Publishing runs the full gate set first (typecheck, build, differential
+# suites, size gate) via `npm run release`. Requires the NPM_TOKEN secret
+# (an automation token for the `cn` package).
+on:
+  push:
+    branches: [main]
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write # version PR, tags, GitHub releases
+  pull-requests: write # version PR
+  id-token: write # npm provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: create version PR or publish
+        uses: changesets/action@v1
+        with:
+          publish: pnpm run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_PROVENANCE: 'true'
+          FUZZ_ITERS: '300000'

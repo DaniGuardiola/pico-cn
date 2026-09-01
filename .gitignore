@@ -1,0 +1,13 @@
+node_modules/
+dist/
+.research/
+.plans/
+*.tsbuildinfo
+
+# prepack copies into the publishable package
+packages/cn/README.md
+packages/cn/LICENSE
+
+# session/tooling state and private planning
+.claude/
+.plans/
