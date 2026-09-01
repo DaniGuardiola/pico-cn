@@ -51,19 +51,15 @@ export function Button({
 Your components already import `cn` from `@/lib/utils`. Swap that file's
 body and every component upgrades at once:
 
-```ts
-// lib/utils.ts (before)
-import { clsx, type ClassValue } from "clsx";
-import { twMerge } from "tailwind-merge";
+```diff
+// lib/utils.ts
+- import { clsx, type ClassValue } from "clsx";
+- import { twMerge } from "tailwind-merge";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
-```
-
-```ts
-// lib/utils.ts (after)
-export { cn } from "cn";
+- export function cn(...inputs: ClassValue[]) {
+-   return twMerge(clsx(inputs));
+- }
++ export { cn } from "cn";
 ```
 
 Then remove `clsx` and `tailwind-merge` from your dependencies. If other
