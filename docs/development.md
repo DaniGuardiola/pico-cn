@@ -67,6 +67,8 @@ Versioning and publishing are driven by [changesets](https://github.com/changese
    "Version Packages" PR.
 3. Merging that PR bumps `cn`, updates `CHANGELOG.md`, and publishes to npm
    with provenance — after the full gate set (typecheck, build, differential
-   suites at 300K fuzz, size gate) passes. Requires the `NPM_TOKEN` secret.
+   suites at 300K fuzz, size gate) passes. Publishing authenticates via OIDC
+   trusted publishing; the package's npm settings list this repo + workflow
+   as a trusted publisher, and no npm token exists anywhere.
 
 The private `conformance` package is never versioned or published.
