@@ -34,6 +34,11 @@ jobs:
         uses: changesets/action@v1
         with:
           publish: pnpm run release
+          # the repo ruleset requires verified signatures; github-api mode
+          # creates the Version Packages commit through the GitHub API, which
+          # GitHub signs itself (github-actions[bot], shows Verified) — no
+          # signing key ever enters CI
+          commitMode: github-api
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
