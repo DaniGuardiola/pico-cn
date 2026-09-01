@@ -15,6 +15,8 @@ cn("px-2 py-1", isActive && "bg-blue-500", { "text-white": isActive })
 Vue, Svelte, Solid, Astro, or plain server templates, and runs in browsers,
 Node, Bun, Deno, and edge runtimes.
 
+`cn` is built and maintained by [aidenybai](https://x.com/aidenybai) and [shadcn](https://x.com/shadcn).
+
 ## Install
 
 ```bash
