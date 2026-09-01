@@ -1,2 +1,7 @@
 packages:
   - packages/*
+
+# cnfast is a benchmark oracle in the private conformance package; we test
+# its releases the day they ship, so exclude it from the release-age hold.
+minimumReleaseAgeExclude:
+  - cnfast

@@ -202,6 +202,14 @@ const rev = (() => {
     }
 })()
 const meta = `Generated ${new Date().toISOString().slice(0, 16).replace('T', ' ')} UTC · Node ${process.version} · ${rev} · <code>pnpm speedlab</code>`
+const pkgVersion = (p) => JSON.parse(readFileSync(p, 'utf8')).version
+const versions = [
+    'cn ' + pkgVersion(join(repoRoot, 'packages/cn/package.json')),
+    'cnfast ' + pkgVersion(join(conformance, 'node_modules/cnfast/package.json')),
+    'tailwind-merge ' + pkgVersion(join(conformance, 'node_modules/tailwind-merge/package.json')),
+    'clsx ' + pkgVersion(join(conformance, 'node_modules/clsx/package.json')),
+].join(' · ')
+html = html.replace('<!--VERSIONS-->', versions)
 html = html.replace('<!--META-->', meta)
 html = html.replace('<!--REFERENCE_ROWS-->', referenceRows.join('\n') || '        <tr><td>skipped (--skip-bench)</td><td></td><td></td><td></td><td></td></tr>')
 html = html.replace('<!--REPO_SECTION-->', repoSection)

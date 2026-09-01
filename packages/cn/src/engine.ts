@@ -1075,9 +1075,44 @@ export const wrapClsx = (mergeString: (input: string) => string): CnFunction => 
             return resolveArgs([v0, v1, v2], true)
         }
         if (nArgs === 1) return mergeString(typeof v0 === 'string' ? v0 : resolveValue(v0 as ClassValue, true))
-        const vals: ClassValue[] = new Array(nArgs)
-        for (let i = 0; i < nArgs; i++) vals[i] = arguments[i]
-        return resolveArgs(vals, false)
+        // 4+ arity: probe predictions in place over `arguments` (indexed
+        // reads only, so it never materializes) — a predicted render-loop
+        // call allocates nothing. Only a genuine miss copies into an array
+        // for the resolve path.
+        const lh = lastHit
+        if (lh !== null) {
+            const pred = lh.n
+            if (pred !== null) {
+                const pa = pred.a
+                let k = 0
+                let ok = true
+                for (let i = 0; i < nArgs; i++) {
+                    const v = arguments[i]
+                    if (!v) continue
+                    if (v !== pa[k]) { ok = false; break }
+                    k++
+                }
+                if (ok && k === pred.t) {
+                    lastHit = pred
+                    return pred.r
+                }
+            }
+            if (lh !== pred) {
+                const la = lh.a
+                let k = 0
+                let ok = true
+                for (let i = 0; i < nArgs; i++) {
+                    const v = arguments[i]
+                    if (!v) continue
+                    if (v !== la[k]) { ok = false; break }
+                    k++
+                }
+                if (ok && k === lh.t) return lh.r
+            }
+        }
+        const vals: ClassValue[] = []
+        for (let i = 0; i < nArgs; i++) vals.push(arguments[i])
+        return resolveArgs(vals, true)
     } as CnFunction
 }
 

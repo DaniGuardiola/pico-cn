@@ -16,7 +16,7 @@
   },
   "devDependencies": {
     "clsx": "^2.1.1",
-    "cnfast": "^0.1.0",
+    "cnfast": "0.2.0",
     "esbuild": "^0.25.0",
     "tailwind-merge": "3.6.0"
   }

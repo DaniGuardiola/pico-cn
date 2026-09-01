@@ -76,31 +76,30 @@ its own warmup, and kept the best of 5 runs.
 To see the results for yourself, run `pnpm bench`. The methodology is
 in [docs/how-it-works.md](https://github.com/shadcn-ui/cn/blob/main/docs/how-it-works.md#benchmark-methodology).
 
-| scenario                                | clsx + tailwind-merge | cnfast |         cn |  faster³ |
-| --------------------------------------- | --------------------: | -----: | ---------: | -------: |
-| the call your components make most¹     |                319 ns | 33 ns² |  **10 ns** |  **30×** |
-| same classes as last render (cache hit) |                 14 ns |   8 ns |   **8 ns** | **1.8×** |
-| typical component strings, warm         |                 13 ns |   7 ns |   **6 ns** | **2.1×** |
-| thousands of recurring strings (a real repo's working set) | 2.4 µs | 727 ns | **14 ns** | **171×** |
-| cold render, many arbitrary values      |                3.4 µs | 3.5 µs | **1.2 µs** | **2.9×** |
-| cold render, SSR-style unique strings   |                2.3 µs | 703 ns | **376 ns** | **6.1×** |
-| very first call (page load)             |                3.4 ms | 3.7 ms | **0.3 ms** |  **11×** |
+Bold marks the fastest implementation on each row (both, when tied).
+
+| scenario                                                   | clsx + tailwind-merge |   cnfast² |         cn | faster³ |
+| ---------------------------------------------------------- | --------------------: | --------: | ---------: | ------: |
+| the call your components make most¹                        |                320 ns | **10 ns** |  **10 ns** |     30× |
+| same classes as last render (cache hit)                    |                 14 ns |  **7 ns** |   **7 ns** |    1.9× |
+| typical component strings, warm                            |                 13 ns |  **6 ns** |       7 ns |    1.9× |
+| thousands of recurring strings (a real repo's working set) |                2.4 µs | **13 ns** |      14 ns |    172× |
+| cold render, many arbitrary values                         |                3.4 µs |    1.9 µs | **1.1 µs** |    3.0× |
+| cold render, SSR-style unique strings                      |                2.3 µs |    555 ns | **360 ns** |    6.4× |
+| very first call (page load)                                |                3.2 ms |    4.3 ms | **0.4 ms** |      7× |
 
 ¹ `cn(base, variant, condition && extra)` with stable class strings. This is
 the shape almost every component call has. `cn` learns repeated call
 sequences, so a render loop's calls verify by identity and skip the work
 entirely. The headline rounds down.
 
-² cnfast's cache for this call only works on Chrome's engine. It detects the
-browser and turns itself off everywhere else. `cn`'s cache works in every
-browser.
+² compared to cnfast 0.2.0.
 
 ³ compared to `clsx` + `tailwind-merge`.
 
-`cn` ships the least JavaScript to parse in every setup. Parse time is the
-cost you feel on slower devices, and it is why the first call is 11× faster.
+`cn` ships the least JavaScript to parse in every setup, 26 KB minified.
 
-If you want the smallest option on both counts, run
+If you want an even smaller bundle with the same performance, see
 [`cn build`](https://github.com/shadcn-ui/cn/blob/main/docs/build-setup.md).
 
 ## Custom themes

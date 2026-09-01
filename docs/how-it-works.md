@@ -5,7 +5,7 @@ the package.
 
 ## The architectural difference
 
-tailwind-merge and cnfast (same engine) ships Tailwind's conflict
+tailwind-merge and cnfast (a fork of its engine) ship Tailwind's conflict
 rules as a runtime JavaScript config object — ~380 class groups of literals,
 theme references, and validator regexes — and interprets it on every uncached
 call: split the token on `-`, walk a `Map` trie over the parts, run regex
@@ -63,7 +63,8 @@ The consequences fall out directly:
 
 1. **Speed** — no config interpretation at runtime (the cold-path numbers).
 2. **Instant init** — tailwind-merge builds its trie from the config on first
-   call (~3.4 ms); `cn` just fills typed arrays from packed strings (~0.3 ms).
+   call (~3.2 ms, cnfast ~4.3 ms); `cn` just fills typed arrays from packed
+   strings (~0.4 ms).
 3. **Project-fitted tables** — because tables are compiler output, they can be
    regenerated against a project's actual classes (`cn build`), which the
    incumbents structurally cannot do: their config object _is_ their public
@@ -103,14 +104,18 @@ pollution, GC pressure, and V8 tiering cross-contaminate implementations — we
 measured swings of 5× from ordering effects alone before isolating.
 
 Two honest caveats to the numbers: microbenchmark nanoseconds vary a few
-percent run to run (cn and cnfast trade places on the SSR workload within
-±3%), and the "cold" workloads are synthetic worst cases — real renders are
-dominated by the cache-hit rows.
+percent run to run (cn and cnfast 0.2.0 trade places on the warmest rows —
+single-site component calls, short recurring strings, large recurring
+working sets — from run to run), and the "cold" workloads are synthetic
+worst cases — real renders are dominated by the cache-hit rows. On cnfast's
+own whole-repository replay suite, cnfast 0.2.0 is currently ~1.1× faster
+(geometric mean); cn wins the largest corpus. Both are microseconds per
+render pass either way.
 
 ## Size accounting
 
-Of the default entry's ~10.2 KB (min+gzip): compiled tables ≈ 5.4 KB, engine ≈
-4.8 KB. Compare tailwind-merge: config object ≈ 7.2 KB, engine ≈ 1.3 KB. Our
+Of the default entry's ~10.5 KB (min+gzip): compiled tables ≈ 5.4 KB, engine ≈
+5.1 KB. Compare tailwind-merge: config object ≈ 7.2 KB, engine ≈ 1.3 KB. Our
 data is smaller than theirs (the compiler dedupes and packs aggressively);
 our engine is bigger because the span validators, automaton, and conflict
 machinery are real code rather than regex/`Map` calls. That trade is the
