@@ -448,9 +448,10 @@
       <code>npm run bench</code> in the cn repository.
     </p>
     <p>
-      Libraries bundled in this page: <!--VERSIONS-->.1.0 · cnfast 0.1.0 · tailwind-merge
-      3.6.0 · clsx 2.x. Output parity between cn and tailwind-merge is enforced
-      by 356,000 differential tests in CI.
+      Libraries bundled in this page:
+      <!--VERSIONS-->.1.0 · cnfast 0.1.0 · tailwind-merge 3.6.0 · clsx 2.x.
+      Output parity between cn and tailwind-merge is enforced by 356,000
+      differential tests in CI.
     </p>
     <p>
       Design of this page follows the format of cnfast's benchmark page by Aiden
@@ -463,37 +464,37 @@
   /*__LIBS__*/
 </script>
 <script>
-  (() => {
-    const libs = window.__LIBS;
+  ;(() => {
+    const libs = window.__LIBS
 
     // engine detection (same trick cnfast uses internally)
-    const err = new Error();
+    const err = new Error()
     const engine =
       "line" in err
         ? "JavaScriptCore"
         : "lineNumber" in err
           ? "SpiderMonkey"
-          : "V8";
-    document.getElementById("engine").textContent = engine;
+          : "V8"
+    document.getElementById("engine").textContent = engine
     document.getElementById("cachestate").textContent =
-      engine === "V8" ? "active" : "inactive (non-V8)";
+      engine === "V8" ? "active" : "inactive (non-V8)"
 
     // ---- corpora (seeded, deterministic) ----
-    let seed = 0xc0ffee;
+    let seed = 0xc0ffee
     const rnd = () => {
-      seed ^= seed << 13;
-      seed >>>= 0;
-      seed ^= seed >> 17;
-      seed ^= seed << 5;
-      seed >>>= 0;
-      return seed / 4294967296;
-    };
-    const pick = (a) => a[Math.floor(rnd() * a.length)];
+      seed ^= seed << 13
+      seed >>>= 0
+      seed ^= seed >> 17
+      seed ^= seed << 5
+      seed >>>= 0
+      return seed / 4294967296
+    }
+    const pick = (a) => a[Math.floor(rnd() * a.length)]
 
     const base =
-      "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:opacity-50";
-    const variant = "bg-primary text-primary-foreground hover:bg-primary/90";
-    const size = "h-10 px-4 py-2";
+      "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none disabled:opacity-50"
+    const variant = "bg-primary text-primary-foreground hover:bg-primary/90"
+    const size = "h-10 px-4 py-2"
 
     const shortTypical = [
       "inline-flex items-center justify-center rounded-md text-sm font-medium",
@@ -512,7 +513,7 @@
       "h-px w-full bg-border",
       "px-2 py-1 text-xs",
       "w-full p-4 md:p-6 lg:px-8",
-    ];
+    ]
     const arbHeavy = Array.from(
       { length: 20000 },
       (_, i) =>
@@ -534,8 +535,8 @@
         i +
         "px)] rounded-[" +
         (i % 24) +
-        "px]",
-    );
+        "px]"
+    )
     const vocab = [
       "flex",
       "inline-flex",
@@ -589,22 +590,22 @@
       "overflow-hidden",
       "relative",
       "absolute",
-    ];
+    ]
     const ssr = Array.from({ length: 20000 }, () => {
-      const n = 3 + Math.floor(rnd() * 9);
-      const parts = [];
-      for (let k = 0; k < n; k++) parts.push(pick(vocab));
-      return parts.join(" ");
-    });
+      const n = 3 + Math.floor(rnd() * 9)
+      const parts = []
+      for (let k = 0; k < n; k++) parts.push(pick(vocab))
+      return parts.join(" ")
+    })
     {
-      const seen = new Set();
+      const seen = new Set()
       for (let i = 0; i < ssr.length; i++) {
-        if (seen.has(ssr[i])) ssr[i] += " z-" + i;
-        seen.add(ssr[i]);
+        if (seen.has(ssr[i])) ssr[i] += " z-" + i
+        seen.add(ssr[i])
       }
     }
     const repeated =
-      "inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm hover:bg-primary/90";
+      "inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm hover:bg-primary/90"
 
     const workloads = [
       {
@@ -613,13 +614,13 @@
         desc: "cn(base, variant, condition && extra), stable class strings",
         run: (fn, deadline) => {
           let n = 0,
-            sink = 0;
+            sink = 0
           while (performance.now() < deadline) {
             for (let i = 0; i < 2000; i++)
-              sink += fn(base, variant, (n + i) % 2 === 0 && size).length;
-            n += 2000;
+              sink += fn(base, variant, (n + i) % 2 === 0 && size).length
+            n += 2000
           }
-          return { n, sink };
+          return { n, sink }
         },
       },
       {
@@ -628,12 +629,12 @@
         desc: "one string, repeated (cache hit)",
         run: (fn, deadline) => {
           let n = 0,
-            sink = 0;
+            sink = 0
           while (performance.now() < deadline) {
-            for (let i = 0; i < 5000; i++) sink += fn(repeated).length;
-            n += 5000;
+            for (let i = 0; i < 5000; i++) sink += fn(repeated).length
+            n += 5000
           }
-          return { n, sink };
+          return { n, sink }
         },
       },
       {
@@ -643,15 +644,15 @@
         run: (fn, deadline) => {
           let n = 0,
             sink = 0,
-            k = 0;
+            k = 0
           while (performance.now() < deadline) {
             for (let i = 0; i < 4000; i++) {
-              sink += fn(shortTypical[k]).length;
-              if (++k === shortTypical.length) k = 0;
+              sink += fn(shortTypical[k]).length
+              if (++k === shortTypical.length) k = 0
             }
-            n += 4000;
+            n += 4000
           }
-          return { n, sink };
+          return { n, sink }
         },
       },
       {
@@ -661,15 +662,15 @@
         run: (fn, deadline) => {
           let n = 0,
             sink = 0,
-            k = 0;
+            k = 0
           while (performance.now() < deadline) {
             for (let i = 0; i < 500; i++) {
-              sink += fn(arbHeavy[k]).length;
-              if (++k === arbHeavy.length) k = 0;
+              sink += fn(arbHeavy[k]).length
+              if (++k === arbHeavy.length) k = 0
             }
-            n += 500;
+            n += 500
           }
-          return { n, sink };
+          return { n, sink }
         },
       },
       {
@@ -679,36 +680,36 @@
         run: (fn, deadline) => {
           let n = 0,
             sink = 0,
-            k = 0;
+            k = 0
           while (performance.now() < deadline) {
             for (let i = 0; i < 1000; i++) {
-              sink += fn(ssr[k]).length;
-              if (++k === ssr.length) k = 0;
+              sink += fn(ssr[k]).length
+              if (++k === ssr.length) k = 0
             }
-            n += 1000;
+            n += 1000
           }
-          return { n, sink };
+          return { n, sink }
         },
       },
-    ];
+    ]
 
     const impls = [
       { id: "pair", label: "clsx+twm", fn: libs.pair },
       { id: "cnfast", label: "cnfast", fn: libs.cnfast },
       { id: "cn", label: "cn", fn: libs.cn },
-    ];
+    ]
 
     // build the result rows
-    const bench = document.getElementById("bench");
-    const cells = {};
+    const bench = document.getElementById("bench")
+    const cells = {}
     for (const w of workloads) {
-      const box = document.createElement("div");
-      box.className = "bcase";
+      const box = document.createElement("div")
+      box.className = "bcase"
       box.innerHTML =
-        "<h3>" + w.name + '</h3><p class="desc">' + w.desc + "</p>";
+        "<h3>" + w.name + '</h3><p class="desc">' + w.desc + "</p>"
       for (const imp of impls) {
-        const row = document.createElement("div");
-        row.className = "row";
+        const row = document.createElement("div")
+        row.className = "row"
         row.innerHTML =
           '<span class="who">' +
           imp.label +
@@ -716,14 +717,14 @@
           '<div class="track"><div class="fill ' +
           imp.id +
           '"></div></div>' +
-          '<span class="val">—</span>';
-        box.appendChild(row);
+          '<span class="val">—</span>'
+        box.appendChild(row)
         cells[w.id + ":" + imp.id] = {
           fill: row.querySelector(".fill"),
           val: row.querySelector(".val"),
-        };
+        }
       }
-      bench.appendChild(box);
+      bench.appendChild(box)
     }
 
     const fmt = (ops) =>
@@ -731,59 +732,59 @@
         ? (ops / 1e6).toFixed(2) + "M ops/s"
         : ops >= 1e3
           ? (ops / 1e3).toFixed(1) + "K ops/s"
-          : Math.round(ops) + " ops/s";
+          : Math.round(ops) + " ops/s"
 
-    const yield_ = () => new Promise((r) => setTimeout(r, 0));
+    const yield_ = () => new Promise((r) => setTimeout(r, 0))
 
-    const btn = document.getElementById("run");
-    const status = document.getElementById("status");
+    const btn = document.getElementById("run")
+    const status = document.getElementById("status")
 
     btn.addEventListener("click", async () => {
-      btn.disabled = true;
-      const results = {};
+      btn.disabled = true
+      const results = {}
       try {
         for (const w of workloads) {
-          results[w.id] = {};
+          results[w.id] = {}
           for (const imp of impls) {
-            status.textContent = "measuring " + w.id + " · " + imp.label + " …";
-            await yield_();
+            status.textContent = "measuring " + w.id + " · " + imp.label + " …"
+            await yield_()
             // warmup
-            w.run(imp.fn, performance.now() + 60);
-            await yield_();
+            w.run(imp.fn, performance.now() + 60)
+            await yield_()
             // 3 timed windows, keep best
-            let best = 0;
+            let best = 0
             for (let t = 0; t < 3; t++) {
-              const t0 = performance.now();
-              const { n } = w.run(imp.fn, t0 + 150);
-              const ops = n / ((performance.now() - t0) / 1000);
-              if (ops > best) best = ops;
-              await yield_();
+              const t0 = performance.now()
+              const { n } = w.run(imp.fn, t0 + 150)
+              const ops = n / ((performance.now() - t0) / 1000)
+              if (ops > best) best = ops
+              await yield_()
             }
-            results[w.id][imp.id] = best;
-            cells[w.id + ":" + imp.id].val.textContent = fmt(best);
+            results[w.id][imp.id] = best
+            cells[w.id + ":" + imp.id].val.textContent = fmt(best)
             // rescale bars in this workload
-            const max = Math.max(...impls.map((x) => results[w.id][x.id] || 0));
+            const max = Math.max(...impls.map((x) => results[w.id][x.id] || 0))
             for (const x of impls) {
-              const v = results[w.id][x.id];
+              const v = results[w.id][x.id]
               if (v)
                 cells[w.id + ":" + x.id].fill.style.width =
-                  ((100 * v) / max).toFixed(1) + "%";
+                  ((100 * v) / max).toFixed(1) + "%"
             }
           }
           // annotate multipliers vs pair
-          const pairOps = results[w.id].pair;
+          const pairOps = results[w.id].pair
           for (const x of impls) {
-            if (x.id === "pair") continue;
-            const v = results[w.id][x.id];
+            if (x.id === "pair") continue
+            const v = results[w.id][x.id]
             cells[w.id + ":" + x.id].val.innerHTML =
-              fmt(v) + " · <b>" + (v / pairOps).toFixed(1) + "×</b>";
+              fmt(v) + " · <b>" + (v / pairOps).toFixed(1) + "×</b>"
           }
         }
         status.textContent =
-          "done · " + engine + " · " + navigator.userAgent.split(") ").pop();
+          "done · " + engine + " · " + navigator.userAgent.split(") ").pop()
       } finally {
-        btn.disabled = false;
+        btn.disabled = false
       }
-    });
-  })();
+    })
+  })()
 </script>

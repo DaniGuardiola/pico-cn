@@ -35,8 +35,9 @@ In every setup below, the app code is the same:
 
 ```ts
 // lib/utils.ts
-import tables from "./cn-tables"
 import { createCn } from "cn/engine"
+
+import tables from "./cn-tables"
 
 export const cn = createCn(tables)
 ```
@@ -57,8 +58,8 @@ npm lifecycle hooks run automatically before `dev` and `build`:
     "predev": "cn build --content \"{app,components,lib}/**/*.{ts,tsx}\" -o lib/cn-tables.ts",
     "dev": "next dev",
     "prebuild": "cn build --content \"{app,components,lib}/**/*.{ts,tsx}\" -o lib/cn-tables.ts",
-    "build": "next build"
-  }
+    "build": "next build",
+  },
 }
 ```
 
@@ -71,15 +72,18 @@ forgotten — regenerates on every dev-server start and build:
 
 ```ts
 // vite.config.ts
-import { defineConfig } from "vite"
 import { execSync } from "node:child_process"
+import { defineConfig } from "vite"
 
 const cnBuild = () => ({
   name: "cn-build",
   buildStart() {
-    execSync("npx cn build --content 'src/**/*.{ts,tsx}' -o src/lib/cn-tables.js", {
-      stdio: "inherit",
-    })
+    execSync(
+      "npx cn build --content 'src/**/*.{ts,tsx}' -o src/lib/cn-tables.js",
+      {
+        stdio: "inherit",
+      }
+    )
   },
 })
 
@@ -99,10 +103,10 @@ output — so it caches cleanly:
   "tasks": {
     "cn-build": {
       "inputs": ["src/**/*.{ts,tsx}", "cn.config.mjs"],
-      "outputs": ["src/lib/cn-tables.js"]
+      "outputs": ["src/lib/cn-tables.js"],
     },
-    "build": { "dependsOn": ["cn-build"] }
-  }
+    "build": { "dependsOn": ["cn-build"] },
+  },
 }
 ```
 

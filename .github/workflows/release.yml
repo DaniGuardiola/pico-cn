@@ -47,5 +47,5 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # pnpm publish does not auto-enable provenance under trusted
           # publishing the way npm does; ask for it explicitly
-          NPM_CONFIG_PROVENANCE: 'true'
-          FUZZ_ITERS: '300000'
+          NPM_CONFIG_PROVENANCE: "true"
+          FUZZ_ITERS: "300000"

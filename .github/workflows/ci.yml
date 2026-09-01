@@ -19,12 +19,14 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      - run: pnpm run lint
+      - run: pnpm run format:check
       - run: pnpm run typecheck
       - run: pnpm run build
       - run: node packages/conformance/tests/correctness.mjs
       - run: node packages/conformance/tests/fuzz.mjs
         env:
-          FUZZ_ITERS: '300000'
+          FUZZ_ITERS: "300000"
       - run: node packages/conformance/tests/custom-config.mjs
       - run: node packages/conformance/tests/cli.mjs
       - name: size gate (default entry must stay smaller than cnfast)

@@ -12,10 +12,10 @@ resolve: { alias: { "tailwind-merge": "cn", clsx: "cn" } }
 ```js
 // next.config.js
 webpack: (config) => {
-  config.resolve.alias["tailwind-merge"] = "cn";
-  config.resolve.alias["clsx"] = "cn";
-  return config;
-};
+  config.resolve.alias["tailwind-merge"] = "cn"
+  config.resolve.alias["clsx"] = "cn"
+  return config
+}
 ```
 
 This works because `cn` exports drop-in `twMerge`, `twJoin`, and `clsx`

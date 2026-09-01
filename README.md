@@ -5,10 +5,10 @@ conflict resolution. It replaces `tailwind-merge` and `clsx`. Same APIs.
 Full parity. **And it is [30× faster](#how-much-faster).**
 
 ```ts
-import { cn } from "cn";
+import { cn } from "cn"
 
 // conditional joining (like clsx) + conflict resolution (like tailwind-merge)
-cn("px-2 py-1", isActive && "bg-blue-500", { "text-white": isActive });
+cn("px-2 py-1", isActive && "bg-blue-500", { "text-white": isActive })
 ```
 
 `cn` has zero dependencies and is framework-agnostic: it works with React,
@@ -26,7 +26,7 @@ npm i cn
 Import it and go. Nothing to configure:
 
 ```tsx
-import { cn } from "cn";
+import { cn } from "cn"
 
 export function Button({
   className,
@@ -38,11 +38,11 @@ export function Button({
       className={cn(
         "rounded-md px-4 py-2 text-sm",
         active && "bg-primary",
-        className,
+        className
       )}
       {...props}
     />
-  );
+  )
 }
 ```
 
@@ -109,18 +109,20 @@ same name:
 
 ```ts
 // before
-import { extendTailwindMerge } from "tailwind-merge";
+import { extendTailwindMerge } from "tailwind-merge"
+
 const twMerge = extendTailwindMerge({
   extend: { classGroups: { "font-size": [{ text: ["hero"] }] } },
-});
+})
 ```
 
 ```ts
 // after
-import { createCn } from "cn/config";
+import { createCn } from "cn/config"
+
 const cn = createCn({
   extend: { classGroups: { "font-size": [{ text: ["hero"] }] } },
-});
+})
 ```
 
 Custom validator functions work as-is. `fromTheme`, `validators`,

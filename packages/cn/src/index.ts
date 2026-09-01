@@ -1,5 +1,5 @@
-import tables from './tables.generated.js'
-import { clsx, createEngine, twJoin, wrapClsx } from './engine.js'
+import tables from "./tables.generated.js"
+import { clsx, createEngine, twJoin, wrapClsx } from "./engine.js"
 
 const instance = /* @__PURE__ */ createEngine(tables)
 
@@ -18,17 +18,17 @@ export { clsx, createEngine, twJoin }
 // validators) — a separate entry so the compiler and default-config data
 // never enter this one's bundle graph. Compiled project tables pair with
 // createCn from "cn/engine".
-export type { CnConfig, ConfigExtension, CreateCnInput } from './config.js'
+export type { CnConfig, ConfigExtension, CreateCnInput } from "./config.js"
 
 export type {
-    ClassArray,
-    ClassDictionary,
-    ClassNameArray,
-    ClassNameValue,
-    ClassValue,
-    CnFunction,
-    Engine,
-    EngineOptions,
-    Tables,
-    ValidatorImpls,
-} from './types.js'
+  ClassArray,
+  ClassDictionary,
+  ClassNameArray,
+  ClassNameValue,
+  ClassValue,
+  CnFunction,
+  Engine,
+  EngineOptions,
+  Tables,
+  ValidatorImpls,
+} from "./types.js"

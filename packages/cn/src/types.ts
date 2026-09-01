@@ -4,62 +4,62 @@
  * the compiler for the encoding.
  */
 export interface Tables {
-    /** number of static conflict groups */
-    GROUP_COUNT: number
-    /** CSR: node → [start,end) range into edge arrays */
-    edgeStart: Int32Array
-    /** CSR: edge → [start,end) range into labelText */
-    labelStart: Int32Array
-    /** radix-edge label characters, concatenated */
-    labelText: string
-    /** edge → target node */
-    edgeTarget: Int32Array
-    /** node → group id (0 = none) offset by 1 */
-    nodeGroup: Int32Array
-    /** node → validator-list id (-1 = none) */
-    nodeVlist: Int32Array
-    /** CSR: validator-list pattern → [start,end) into vlistOps */
-    vlistPat: Int32Array
-    /** validator opcodes */
-    vlistOps: Int32Array
-    /** validator-list → op pattern id */
-    vlistRef: Int32Array
-    /** flat per-list group ids (delta-coded at generation) */
-    vlistGroup: Int32Array
-    /** lifted-literal entry → anchor node */
-    litAnchor: Int32Array
-    /** lifted-literal entry → group id */
-    litGroup: Int32Array
-    /** lifted-literal entry → pool string id */
-    litPool: Int32Array
-    /** pool string id → (offset, length) pairs into poolText */
-    poolOffsets: Int32Array
-    /** deduplicated literal tail text */
-    poolText: string
-    /** conflict adjacency: row → source group id */
-    adjGid: Int32Array
-    /** CSR: row → [start,end) into adjTgt */
-    adjStart: Int32Array
-    /** overridden group ids */
-    adjTgt: Int32Array
-    /** postfix-extra conflict pairs (conflictingClassGroupModifiers) */
-    patGid: Int32Array
-    patTgt: Int32Array
-    /** groups participating in postfix re-lookup (postfixLookupClassGroups) */
-    postfixLookupGroups: Int32Array
-    /** names of validators not compiled to span opcodes (custom configs) */
-    customValidatorNames: string[]
-    /** space-separated order-sensitive variant names */
-    orderSensitiveModifiers: string
-    /** optional Tailwind v4 prefix baked into the tables */
-    prefix?: string
+  /** number of static conflict groups */
+  GROUP_COUNT: number
+  /** CSR: node → [start,end) range into edge arrays */
+  edgeStart: Int32Array
+  /** CSR: edge → [start,end) range into labelText */
+  labelStart: Int32Array
+  /** radix-edge label characters, concatenated */
+  labelText: string
+  /** edge → target node */
+  edgeTarget: Int32Array
+  /** node → group id (0 = none) offset by 1 */
+  nodeGroup: Int32Array
+  /** node → validator-list id (-1 = none) */
+  nodeVlist: Int32Array
+  /** CSR: validator-list pattern → [start,end) into vlistOps */
+  vlistPat: Int32Array
+  /** validator opcodes */
+  vlistOps: Int32Array
+  /** validator-list → op pattern id */
+  vlistRef: Int32Array
+  /** flat per-list group ids (delta-coded at generation) */
+  vlistGroup: Int32Array
+  /** lifted-literal entry → anchor node */
+  litAnchor: Int32Array
+  /** lifted-literal entry → group id */
+  litGroup: Int32Array
+  /** lifted-literal entry → pool string id */
+  litPool: Int32Array
+  /** pool string id → (offset, length) pairs into poolText */
+  poolOffsets: Int32Array
+  /** deduplicated literal tail text */
+  poolText: string
+  /** conflict adjacency: row → source group id */
+  adjGid: Int32Array
+  /** CSR: row → [start,end) into adjTgt */
+  adjStart: Int32Array
+  /** overridden group ids */
+  adjTgt: Int32Array
+  /** postfix-extra conflict pairs (conflictingClassGroupModifiers) */
+  patGid: Int32Array
+  patTgt: Int32Array
+  /** groups participating in postfix re-lookup (postfixLookupClassGroups) */
+  postfixLookupGroups: Int32Array
+  /** names of validators not compiled to span opcodes (custom configs) */
+  customValidatorNames: string[]
+  /** space-separated order-sensitive variant names */
+  orderSensitiveModifiers: string
+  /** optional Tailwind v4 prefix baked into the tables */
+  prefix?: string
 }
 
 export interface EngineOptions {
-    /** whole-string result cache size; 0 disables (default 500) */
-    cacheSize?: number
-    /** Tailwind v4 prefix (`tw` matches `tw:hover:p-4`); overrides tables */
-    prefix?: string
+  /** whole-string result cache size; 0 disables (default 500) */
+  cacheSize?: number
+  /** Tailwind v4 prefix (`tw` matches `tw:hover:p-4`); overrides tables */
+  prefix?: string
 }
 
 /** implementations for validators named in `Tables.customValidatorNames` */
@@ -67,39 +67,33 @@ export type ValidatorImpls = Record<string, (value: string) => boolean>
 
 /** tailwind-merge `twJoin`/`twMerge` argument shape (strings + nested arrays) */
 export type ClassNameValue =
-    | ClassNameArray
-    | string
-    | null
-    | undefined
-    | 0
-    | 0n
-    | false
+  ClassNameArray | string | null | undefined | 0 | 0n | false
 export type ClassNameArray = readonly ClassNameValue[]
 
 /** clsx argument shape (adds numbers and object syntax) */
 export type ClassValue =
-    | ClassArray
-    | ClassDictionary
-    | string
-    | number
-    | bigint
-    | null
-    | boolean
-    | undefined
+  | ClassArray
+  | ClassDictionary
+  | string
+  | number
+  | bigint
+  | null
+  | boolean
+  | undefined
 export type ClassArray = ClassValue[]
 export interface ClassDictionary {
-    // matches clsx's Record<string, any> for drop-in type parity
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    [id: string]: any
+  // matches clsx's Record<string, any> for drop-in type parity
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  [id: string]: any
 }
 
 export interface Engine {
-    /** variadic merge, `twMerge`-compatible (strings + nested arrays) */
-    merge: (...inputs: ClassNameValue[]) => string
-    /** merge one already-joined class string */
-    mergeString: (input: string) => string
-    /** merge one string, bypassing the whole-string cache */
-    mergeUncached: (input: string) => string
+  /** variadic merge, `twMerge`-compatible (strings + nested arrays) */
+  merge: (...inputs: ClassNameValue[]) => string
+  /** merge one already-joined class string */
+  mergeString: (input: string) => string
+  /** merge one string, bypassing the whole-string cache */
+  mergeUncached: (input: string) => string
 }
 
 /** the `cn` function shape: clsx arguments, merged output */
