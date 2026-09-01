@@ -43,6 +43,11 @@ jobs:
           # default (push-with-git-cli: false), signed by GitHub itself —
           # satisfies the signed-commits ruleset with no key in CI
           publish-script: pnpm run release
+          # v2 renamed these from v1's `commit`/`title`; default is
+          # "Version Packages", which does not match the repo's
+          # conventional-commit history
+          commit-message: "chore(release): version packages"
+          pr-title: "chore(release): version packages"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # pnpm publish does not auto-enable provenance under trusted
