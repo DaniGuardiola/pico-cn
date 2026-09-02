@@ -19,7 +19,7 @@ export type ClassGroupDef =
   | { $v: string }
   | { $t: string }
   | ((value: string) => boolean)
-  | { [key: string]: ClassGroupDef[] }
+  | { [key: string]: readonly ClassGroupDef[] }
 
 export interface CnConfig {
   theme: Record<string, ClassGroupDef[]>
@@ -31,29 +31,19 @@ export interface CnConfig {
   prefix?: string
 }
 
+type ConfigExtensionGroups = {
+  theme: Record<string, readonly ClassGroupDef[]>
+  classGroups: Record<string, readonly ClassGroupDef[]>
+  conflictingClassGroups: Record<string, readonly string[]>
+  conflictingClassGroupModifiers: Record<string, readonly string[]>
+  orderSensitiveModifiers: readonly string[]
+}
+
 export interface ConfigExtension {
   prefix?: string
   cacheSize?: number
-  override?: Partial<
-    Pick<
-      CnConfig,
-      | "theme"
-      | "classGroups"
-      | "conflictingClassGroups"
-      | "conflictingClassGroupModifiers"
-      | "orderSensitiveModifiers"
-    >
-  >
-  extend?: Partial<
-    Pick<
-      CnConfig,
-      | "theme"
-      | "classGroups"
-      | "conflictingClassGroups"
-      | "conflictingClassGroupModifiers"
-      | "orderSensitiveModifiers"
-    >
-  >
+  override?: Partial<ConfigExtensionGroups>
+  extend?: Partial<ConfigExtensionGroups>
 }
 
 /**
@@ -101,10 +91,13 @@ export const mergeConfigs = (
   const config = cloneConfig(base)
   if (extension.prefix !== undefined) config.prefix = extension.prefix
 
-  const overrideProps = <T extends object>(target: T, src?: Partial<T>) => {
+  const overrideProps = <V>(
+    target: Record<string, V>,
+    src?: Record<string, V>
+  ) => {
     if (!src) return
     for (const key in src) {
-      if (src[key] !== undefined) target[key] = src[key] as T[typeof key]
+      if (src[key] !== undefined) target[key] = src[key]
     }
   }
   const ov = extension.override
@@ -139,10 +132,7 @@ export const mergeConfigs = (
       ]
     }
     extendArrays(config.theme, ex.theme)
-    extendArrays(
-      config.classGroups as Record<string, readonly ClassGroupDef[]>,
-      ex.classGroups
-    )
+    extendArrays(config.classGroups, ex.classGroups)
     extendArrays(config.conflictingClassGroups, ex.conflictingClassGroups)
     extendArrays(
       config.conflictingClassGroupModifiers,
@@ -259,7 +249,7 @@ const newPartNode = (): PartNode => ({
   lit: [],
 })
 
-const expandTheme = (config: CnConfig, key: string): ClassGroupDef[] =>
+const expandTheme = (config: CnConfig, key: string): readonly ClassGroupDef[] =>
   config.theme[key] ?? []
 
 const buildPartTrie = (
@@ -309,7 +299,7 @@ const buildPartTrie = (
       return
     }
     for (const [key, value] of Object.entries(
-      def as { [key: string]: ClassGroupDef[] }
+      def as { [key: string]: readonly ClassGroupDef[] }
     )) {
       const child = getPart(node, key)
       for (const inner of value) process(inner, child, gid)

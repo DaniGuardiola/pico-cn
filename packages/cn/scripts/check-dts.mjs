@@ -66,6 +66,9 @@ wrapClsx(engine.mergeString)("p-2", ["p-4"])
 
 // config: custom-config surface
 const config: CnConfig = defaultConfig()
+config.theme.font.push("custom")
+config.classGroups["font-family"].push("custom")
+config.orderSensitiveModifiers.push("custom")
 const ext: ConfigExtension = {
   extend: { classGroups: { "font-size": [{ text: ["hero"] }] } },
 }
@@ -73,6 +76,13 @@ const merged: CnConfig = mergeConfigs(config, ext)
 const input: CreateCnInput = ext
 createCn(input)("p-2")
 createCn((c: CnConfig) => c)("p-2")
+const readonlyFontTokens = ["body", "diagram", "headline"] as const
+createCn({
+  extend: {
+    theme: { font: readonlyFontTokens },
+    classGroups: { "font-family": [{ font: readonlyFontTokens }] },
+  },
+})("font-body font-headline")
 createTwMerge(ext)("p-2 p-4")
 extendTailwindMerge(ext)("p-2 p-4")
 const themeRef: { $t: string } = fromTheme("spacing")
