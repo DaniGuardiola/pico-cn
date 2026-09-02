@@ -247,6 +247,25 @@ const compare = (label, ours, theirs, cases) => {
   )
 }
 
+// 12. extend with a single class definition instead of an array
+{
+  const ext = {
+    extend: {
+      classGroups: { "border-w": { border: ["hairline"] } },
+      theme: { text: "huge" },
+    },
+  }
+  compare("extend-single-definition", createCn(ext), extendTailwindMerge(ext), [
+    "border-hairline border-2",
+    "border-2 border-hairline",
+    "border-hairline border-hairline",
+    "border-hairline border-x-2",
+    "text-huge text-lg",
+    "text-lg text-huge",
+    "text-huge text-[#333]",
+  ])
+}
+
 console.log(`custom-config: pass ${pass}  fail ${fail}`)
 for (const r of report) {
   console.log(`DIFF [${r.label}] input=${JSON.stringify(r.input)}`)

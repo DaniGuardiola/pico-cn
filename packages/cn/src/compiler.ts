@@ -127,7 +127,7 @@ export const mergeConfigs = (
     if (!src) return
     for (const key in src) {
       const add = src[key]
-      if (add) target[key] = target[key] ? [...target[key], ...add] : [...add]
+      if (add) target[key] = (target[key] ?? []).concat(add)
     }
   }
   const ex = extension.extend
