@@ -11,3 +11,4 @@ packages/cn/LICENSE
 # session/tooling state and private planning
 .claude/
 .plans/
+plans
