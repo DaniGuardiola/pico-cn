@@ -122,6 +122,17 @@ export const createEngine = (
   const adjRow = new Int32Array(GROUP_COUNT).fill(-1)
   for (let i = 0; i < adjGid.length; i++) adjRow[adjGid[i]] = i
 
+  // claims per kept token: itself + its adjacency row + postfix pairs;
+  // sizes the claim table so it can never fill under any config
+  let maxAdj = 0
+  for (let r = 0; r + 1 < adjStart.length; r++) {
+    const n = adjStart[r + 1] - adjStart[r]
+    if (n > maxAdj) maxAdj = n
+  }
+  let CLAIM_PER_TOKEN = 32
+  while (CLAIM_PER_TOKEN < 2 * (1 + maxAdj + patGid.length))
+    CLAIM_PER_TOKEN <<= 1
+
   // per-list gid offsets (lists share op patterns; gids are flat per list)
   const vgStart = new Int32Array(vlistRef.length + 1)
   for (let l = 0; l < vlistRef.length; l++) {
@@ -230,6 +241,10 @@ export const createEngine = (
     (c >= 65 && c <= 90) ||
     (c >= 48 && c <= 57) ||
     c === 95
+
+  // non-ascii members of js \s (u00a0, u1680, u2000-u200a, u2028/9, u202f,
+  // u205f, u3000, ufeff); only reached for code units >= 0xa0
+  const isUniWS = (c: number): boolean => /\s/.test(String.fromCharCode(c))
 
   const analyzeArb = (input: string, s: number, e: number): void => {
     aKind = 0
@@ -452,6 +467,7 @@ export const createEngine = (
   let nextDynId = GROUP_COUNT
   const MAX_DYN = GROUP_COUNT + 4096
   const newDynId = () => nextDynId++
+  const ID_LIMIT = 2097152 // 2^21: keeps ctx * 2^21 + gid exact in a double
 
   // ---- token memo (process lifetime, 2-way set-associative) --------------
   // full token span → (gid, ctxId, flags); hit verifies chars in place, so
@@ -525,11 +541,11 @@ export const createEngine = (
   const claim0 = new Int32Array(GROUP_COUNT)
 
   // unified claim set for the rest (variant contexts, dynamic groups):
-  // epoch-stamped open-addressed (ctxId, gid) keys — both are dense ids
-  // (ctxId ≤ 4096, gid < GROUP_COUNT + 4096), so they pack directly
+  // epoch-stamped open-addressed (ctxId, gid) keys stored as exact doubles —
+  // ids are bounded per merge by ID_LIMIT
   let CLAIM_TABLE = 2048
   let claimShift = 21 // 32 - log2(CLAIM_TABLE)
-  let claimKeys = new Int32Array(CLAIM_TABLE)
+  let claimKeys = new Float64Array(CLAIM_TABLE)
   let claimEpochs = new Int32Array(CLAIM_TABLE)
   let epoch = 0
   // test-and-claim in one probe: returns 1 if (ctx, gid) was already
@@ -540,7 +556,7 @@ export const createEngine = (
       claim0[gid] = epoch
       return 0
     }
-    const key = ((ctx << 13) | gid) + 1
+    const key = ctx * 2097152 + gid + 1
     let idx = Math.imul(key, 0x9e3779b1) >>> claimShift
     for (;;) {
       if (claimEpochs[idx] !== epoch) break // free slot
@@ -620,7 +636,7 @@ export const createEngine = (
     let sawNonSpaceWS = false
 
     // bounded-growth resets, between merges only
-    if (nextCtxId > MAX_CTX) {
+    if (nextCtxId > MAX_CTX || ctxByHash.size > MAX_CTX) {
       ctxByHash = new Map()
       ctxByCanon = new Map()
       nextCtxId = 2
@@ -635,7 +651,7 @@ export const createEngine = (
     let i = 0
     while (i < n) {
       let c = input.charCodeAt(i)
-      if (c === 32 || (c >= 9 && c <= 13)) {
+      if (c === 32 || (c >= 9 && c <= 13) || (c >= 0xa0 && isUniWS(c))) {
         if (c !== 32) sawNonSpaceWS = true
         i++
         continue
@@ -653,6 +669,9 @@ export const createEngine = (
             break
           }
           // control chars 0-8/14-31 are token chars (parity)
+        } else if (c >= 0xa0 && isUniWS(c)) {
+          sawNonSpaceWS = true
+          break
         }
         th = Math.imul(th ^ c, 0x01000193)
         i++
@@ -891,16 +910,19 @@ export const createEngine = (
     }
 
     // ===== backward claim pass ============================================
-    // worst-case claims = tokens x (1 + max fan-out); keep load factor
-    // under 50% so probes stay short and the table can never fill
-    if (tokenCount * 32 > CLAIM_TABLE) {
-      while (tokenCount * 32 > CLAIM_TABLE) {
+    // worst-case claims = tokens x CLAIM_PER_TOKEN, where CLAIM_PER_TOKEN is
+    // derived from the tables' real max fan-out; keep load factor under 50%
+    // so probes stay short and the table can never fill
+    if (tokenCount * CLAIM_PER_TOKEN > CLAIM_TABLE) {
+      while (tokenCount * CLAIM_PER_TOKEN > CLAIM_TABLE) {
         CLAIM_TABLE <<= 1
         claimShift--
       }
-      claimKeys = new Int32Array(CLAIM_TABLE)
+      claimKeys = new Float64Array(CLAIM_TABLE)
       claimEpochs = new Int32Array(CLAIM_TABLE)
     }
+    if (nextCtxId >= ID_LIMIT || nextDynId >= ID_LIMIT)
+      throw new Error("cn: too many distinct classes in one merge")
     // epoch is stored in Int32Arrays, so it has to truncate the same way; on
     // the wrap through 0 the tables must be cleared or unclaimed slots read
     // as claimed
@@ -1133,10 +1155,11 @@ const resolveValue = (v: ClassValue, clsxMode: boolean): string => {
   let out = ""
   if (
     typeof (v as { length?: unknown }).length === "number" &&
-    Array.isArray(v)
+    (clsxMode ? Array.isArray(v) : true)
   ) {
-    for (let i = 0; i < v.length; i++) {
-      const item = v[i]
+    const arr = v as ArrayLike<ClassValue>
+    for (let i = 0; i < arr.length; i++) {
+      const item = arr[i]
       if (!item) continue
       const r = typeof item === "string" ? item : resolveValue(item, clsxMode)
       if (r) {
