@@ -27,9 +27,13 @@ import type {
   CnFunction,
   Engine,
   EngineOptions,
+  FreshMerge,
   Tables,
   ValidatorImpls,
 } from "./types.js"
+
+// JavaScriptCore (Bun, Safari) puts `line` on Error instances; V8 does not
+const IS_JSC = "line" in new Error()
 
 const EXTERNAL = -1
 const DEAD = -1
@@ -64,6 +68,16 @@ const spanHash = (str: string, s: number, e: number): number => {
       0xc2b2ae35
     )
     h ^= (str.charCodeAt(e - 2) << 8) ^ (str.charCodeAt(e - 1) << 16)
+    // arbitrary values keep their digits a few chars from an end
+    // (`w-[123px]`, `bg-[#a1b2c3]`), between the samples above: fold five
+    // more chars from each end, walking inwards, so those strings stop
+    // colliding (one loop, two reads: the fold has to stay small enough
+    // for mergeCached to keep inlining into its callers)
+    for (let p = s + 3, q = e - 4; p < s + 8 && p < q; p++, q--)
+      h = Math.imul(
+        h ^ str.charCodeAt(p) ^ (str.charCodeAt(q) << 8),
+        0x01000193
+      )
   }
   return (h ^ (h >>> 15)) | 0
 }
@@ -107,6 +121,17 @@ export const createEngine = (
   // row to claim the groups it overrides.
   const adjRow = new Int32Array(GROUP_COUNT).fill(-1)
   for (let i = 0; i < adjGid.length; i++) adjRow[adjGid[i]] = i
+
+  // claims per kept token: itself + its adjacency row + postfix pairs;
+  // sizes the claim table so it can never fill under any config
+  let maxAdj = 0
+  for (let r = 0; r + 1 < adjStart.length; r++) {
+    const n = adjStart[r + 1] - adjStart[r]
+    if (n > maxAdj) maxAdj = n
+  }
+  let CLAIM_PER_TOKEN = 32
+  while (CLAIM_PER_TOKEN < 2 * (1 + maxAdj + patGid.length))
+    CLAIM_PER_TOKEN <<= 1
 
   // per-list gid offsets (lists share op patterns; gids are flat per list)
   const vgStart = new Int32Array(vlistRef.length + 1)
@@ -216,6 +241,10 @@ export const createEngine = (
     (c >= 65 && c <= 90) ||
     (c >= 48 && c <= 57) ||
     c === 95
+
+  // non-ascii members of js \s (u00a0, u1680, u2000-u200a, u2028/9, u202f,
+  // u205f, u3000, ufeff); only reached for code units >= 0xa0
+  const isUniWS = (c: number): boolean => /\s/.test(String.fromCharCode(c))
 
   const analyzeArb = (input: string, s: number, e: number): void => {
     aKind = 0
@@ -438,6 +467,7 @@ export const createEngine = (
   let nextDynId = GROUP_COUNT
   const MAX_DYN = GROUP_COUNT + 4096
   const newDynId = () => nextDynId++
+  const ID_LIMIT = 2097152 // 2^21: keeps ctx * 2^21 + gid exact in a double
 
   // ---- token memo (process lifetime, 2-way set-associative) --------------
   // full token span → (gid, ctxId, flags); hit verifies chars in place, so
@@ -511,11 +541,11 @@ export const createEngine = (
   const claim0 = new Int32Array(GROUP_COUNT)
 
   // unified claim set for the rest (variant contexts, dynamic groups):
-  // epoch-stamped open-addressed (ctxId, gid) keys — both are dense ids
-  // (ctxId ≤ 4096, gid < GROUP_COUNT + 4096), so they pack directly
+  // epoch-stamped open-addressed (ctxId, gid) keys stored as exact doubles —
+  // ids are bounded per merge by ID_LIMIT
   let CLAIM_TABLE = 2048
   let claimShift = 21 // 32 - log2(CLAIM_TABLE)
-  let claimKeys = new Int32Array(CLAIM_TABLE)
+  let claimKeys = new Float64Array(CLAIM_TABLE)
   let claimEpochs = new Int32Array(CLAIM_TABLE)
   let epoch = 0
   // test-and-claim in one probe: returns 1 if (ctx, gid) was already
@@ -526,7 +556,7 @@ export const createEngine = (
       claim0[gid] = epoch
       return 0
     }
-    const key = ((ctx << 13) | gid) + 1
+    const key = ctx * 2097152 + gid + 1
     let idx = Math.imul(key, 0x9e3779b1) >>> claimShift
     for (;;) {
       if (claimEpochs[idx] !== epoch) break // free slot
@@ -606,7 +636,7 @@ export const createEngine = (
     let sawNonSpaceWS = false
 
     // bounded-growth resets, between merges only
-    if (nextCtxId > MAX_CTX) {
+    if (nextCtxId > MAX_CTX || ctxByHash.size > MAX_CTX) {
       ctxByHash = new Map()
       ctxByCanon = new Map()
       nextCtxId = 2
@@ -621,7 +651,7 @@ export const createEngine = (
     let i = 0
     while (i < n) {
       let c = input.charCodeAt(i)
-      if (c === 32 || (c >= 9 && c <= 13)) {
+      if (c === 32 || (c >= 9 && c <= 13) || (c >= 0xa0 && isUniWS(c))) {
         if (c !== 32) sawNonSpaceWS = true
         i++
         continue
@@ -639,6 +669,9 @@ export const createEngine = (
             break
           }
           // control chars 0-8/14-31 are token chars (parity)
+        } else if (c >= 0xa0 && isUniWS(c)) {
+          sawNonSpaceWS = true
+          break
         }
         th = Math.imul(th ^ c, 0x01000193)
         i++
@@ -877,16 +910,19 @@ export const createEngine = (
     }
 
     // ===== backward claim pass ============================================
-    // worst-case claims = tokens x (1 + max fan-out); keep load factor
-    // under 50% so probes stay short and the table can never fill
-    if (tokenCount * 32 > CLAIM_TABLE) {
-      while (tokenCount * 32 > CLAIM_TABLE) {
+    // worst-case claims = tokens x CLAIM_PER_TOKEN, where CLAIM_PER_TOKEN is
+    // derived from the tables' real max fan-out; keep load factor under 50%
+    // so probes stay short and the table can never fill
+    if (tokenCount * CLAIM_PER_TOKEN > CLAIM_TABLE) {
+      while (tokenCount * CLAIM_PER_TOKEN > CLAIM_TABLE) {
         CLAIM_TABLE <<= 1
         claimShift--
       }
-      claimKeys = new Int32Array(CLAIM_TABLE)
+      claimKeys = new Float64Array(CLAIM_TABLE)
       claimEpochs = new Int32Array(CLAIM_TABLE)
     }
+    if (nextCtxId >= ID_LIMIT || nextDynId >= ID_LIMIT)
+      throw new Error("cn: too many distinct classes in one merge")
     // epoch is stored in Int32Arrays, so it has to truncate the same way; on
     // the wrap through 0 the tables must be cleared or unclaimed slots read
     // as claimed
@@ -974,6 +1010,8 @@ export const createEngine = (
   let doorEpoch = 1
   let cache = Object.create(null)
   let prevCache = Object.create(null)
+  let cacheMap = new Map<string, string>()
+  let prevCacheMap = new Map<string, string>()
   let cacheCount = 0
   let doorMarks = 0
   // two-generation rotation: sightings survive mark pressure instead of
@@ -989,50 +1027,111 @@ export const createEngine = (
     doorEpoch = (doorEpoch + 1) | 0
     doorMarks = 0
   }
+  // doorkeeper: a string seen once in the current or previous generation
+  // admits on this sighting. Slots store the full 32-bit hash (xor epoch),
+  // so a slot collision must match all hash bits to count as a sighting —
+  // unique streams (SSR) almost never false-admit, which would cost a
+  // dictionary insert plus generation churn per call. Stale slots from two
+  // generations back self-invalidate via the epoch xor. Slot bits never
+  // overlap the base bit, so the sibling generation's slot is one xor away.
+  const mergeCached = (input: string): string => {
+    // hit path first: warm, identity-stable strings stay at one
+    // object-property read with a V8-cached hash
+    let merged = cache[input]
+    if (merged !== undefined) return merged
+    const hash = spanHash(input, 0, input.length)
+    const slot = (hash & (DOOR_SIZE - 1)) + doorBase
+    const wasSeen =
+      door[slot] === (hash ^ doorEpoch) ||
+      door[slot ^ DOOR_SIZE] === (hash ^ (doorEpoch - 1))
+    if (wasSeen) {
+      merged = prevCache[input]
+      if (merged !== undefined) {
+        cache[input] = merged // promote
+        return merged
+      }
+    }
+    merged = mergeClassList(input)
+    if (wasSeen) {
+      cache[input] = merged
+      if (++cacheCount > cacheSize) {
+        cacheCount = 0
+        prevCache = cache
+        cache = Object.create(null)
+        rotateDoor()
+      }
+    } else {
+      door[slot] = hash ^ doorEpoch
+      if (++doorMarks > DOOR_SIZE) rotateDoor()
+    }
+    return merged
+  }
+  // same as mergeCached over Maps: JSC looks up a string key in a
+  // dictionary-mode object in ~21 ns and a fresh key in ~220 ns, where a Map
+  // takes 6 and 75 (V8 is the reverse, 5 vs 18 on a hit, so it keeps the
+  // dictionary above). Kept as a copy rather than an accessor layer, which
+  // cost V8 5% on every hit.
+  const mergeCachedMap = (input: string): string => {
+    let merged = cacheMap.get(input)
+    if (merged !== undefined) return merged
+    const hash = spanHash(input, 0, input.length)
+    const slot = (hash & (DOOR_SIZE - 1)) + doorBase
+    const wasSeen =
+      door[slot] === (hash ^ doorEpoch) ||
+      door[slot ^ DOOR_SIZE] === (hash ^ (doorEpoch - 1))
+    if (wasSeen) {
+      merged = prevCacheMap.get(input)
+      if (merged !== undefined) {
+        cacheMap.set(input, merged) // promote
+        return merged
+      }
+    }
+    merged = mergeClassList(input)
+    if (wasSeen) {
+      cacheMap.set(input, merged)
+      if (++cacheCount > cacheSize) {
+        cacheCount = 0
+        prevCacheMap = cacheMap
+        cacheMap = new Map()
+        rotateDoor()
+      }
+    } else {
+      door[slot] = hash ^ doorEpoch
+      if (++doorMarks > DOOR_SIZE) rotateDoor()
+    }
+    return merged
+  }
+  // a string that was just built cannot be cached by identity, and a
+  // never-seen key is the expensive dictionary case (V8 hashes and
+  // internalizes it: ~200 ns at 17 chars, ~1.1 µs at 360). The doorkeeper
+  // answers "never seen" in O(1) instead, so the caller can merge a
+  // one-shot string uncached and skip caching it anywhere
+  const seenBefore = (input: string): boolean => {
+    const hash = spanHash(input, 0, input.length)
+    const slot = (hash & (DOOR_SIZE - 1)) + doorBase
+    if (
+      door[slot] === (hash ^ doorEpoch) ||
+      door[slot ^ DOOR_SIZE] === (hash ^ (doorEpoch - 1))
+    )
+      return true
+    door[slot] = hash ^ doorEpoch
+    if (++doorMarks > DOOR_SIZE) rotateDoor()
+    return false
+  }
+  // JSC will not inline mergeCached with the doorkeeper body in it, so it
+  // gets a two-line hit front that only falls through to the full function
+  // on a miss (the repeated lookup there rides the hash the front just
+  // cached). V8 inlines the full closure and loses ~15% on long strings
+  // with the body outlined, so it uses mergeCached directly.
   const mergeString =
-    cacheSize > 0
-      ? (input: string): string => {
-          // hit path first: warm, identity-stable strings stay at one
-          // object-property read with a V8-cached hash
-          let r = cache[input]
-          if (r !== undefined) return r
-          // doorkeeper: a string seen once in the current or previous
-          // generation admits on this sighting. Slots store the full
-          // 32-bit hash (xor epoch), so a slot collision must match all
-          // hash bits to count as a sighting — unique streams (SSR)
-          // almost never false-admit, which would cost a dictionary
-          // insert plus generation churn per call. Stale slots from two
-          // generations back self-invalidate via the epoch xor.
-          const h = spanHash(input, 0, input.length)
-          // slot bits never overlap the base bit, so the sibling
-          // generation's slot is one xor away
-          const slot = (h & (DOOR_SIZE - 1)) + doorBase
-          const seen =
-            door[slot] === (h ^ doorEpoch) ||
-            door[slot ^ DOOR_SIZE] === (h ^ (doorEpoch - 1))
-          if (seen) {
-            r = prevCache[input]
-            if (r !== undefined) {
-              cache[input] = r // promote
-              return r
-            }
+    cacheSize === 0
+      ? mergeClassList
+      : IS_JSC
+        ? (input: string): string => {
+            const merged = cacheMap.get(input)
+            return merged !== undefined ? merged : mergeCachedMap(input)
           }
-          r = mergeClassList(input)
-          if (seen) {
-            cache[input] = r
-            if (++cacheCount > cacheSize) {
-              cacheCount = 0
-              prevCache = cache
-              cache = Object.create(null)
-              rotateDoor()
-            }
-          } else {
-            door[slot] = h ^ doorEpoch
-            if (++doorMarks > DOOR_SIZE) rotateDoor()
-          }
-          return r
-        }
-      : mergeClassList
+        : mergeCached
 
   const merge = function (): string {
     return arguments.length === 1 && typeof arguments[0] === "string"
@@ -1040,7 +1139,12 @@ export const createEngine = (
       : mergeString(twJoin.apply(null, arguments as never))
   } as Engine["merge"]
 
-  return { merge, mergeString, mergeUncached: mergeClassList }
+  return {
+    merge,
+    mergeString,
+    seenBefore: cacheSize === 0 ? () => false : seenBefore,
+    mergeUncached: mergeClassList,
+  }
 }
 
 // shared value resolution. clsxMode adds clsx's extras (numbers, object
@@ -1051,10 +1155,11 @@ const resolveValue = (v: ClassValue, clsxMode: boolean): string => {
   let out = ""
   if (
     typeof (v as { length?: unknown }).length === "number" &&
-    Array.isArray(v)
+    (clsxMode ? Array.isArray(v) : true)
   ) {
-    for (let i = 0; i < v.length; i++) {
-      const item = v[i]
+    const arr = v as ArrayLike<ClassValue>
+    for (let i = 0; i < arr.length; i++) {
+      const item = arr[i]
       if (!item) continue
       const r = typeof item === "string" ? item : resolveValue(item, clsxMode)
       if (r) {
@@ -1121,8 +1226,12 @@ interface ArgEntry {
 }
 
 export const wrapClsx = (
-  mergeString: (input: string) => string
+  mergeString: (input: string) => string,
+  fresh?: FreshMerge
 ): CnFunction => {
+  // without an engine's doorkeeper every join counts as seen and is cached
+  const seenBefore = fresh === undefined ? () => true : fresh.seenBefore
+  const mergeUncached = fresh === undefined ? mergeString : fresh.mergeUncached
   // arg-identity cache: repeated calls whose truthy args are the same string
   // *instances* (stable JSX literals — the dominant component shape) skip
   // the re-join and the O(n) hash of the fresh joined string. Only engages
@@ -1193,13 +1302,17 @@ export const wrapClsx = (
     let first = ""
     let firstIdx = -1
     let truthy = 0
+    let hasResolvedValue = false
     for (let i = 0; i < nArgs; i++) {
-      const v = vals[i]
+      let v = vals[i]
       if (!v) continue
       if (typeof v !== "string") {
-        // non-string arg: full clsx resolve. Chain left untouched so a
-        // stray object call doesn't sever a stable sequence.
-        return mergeString(clsx.apply(null, vals as never))
+        // objects and arrays resolve in place and ride the string path: a
+        // one-key object resolves to that key string itself, whose identity
+        // is stable across renders, so the arg cache still hits
+        v = vals[i] = resolveValue(v as ClassValue, true)
+        if (!v) continue
+        hasResolvedValue = true
       }
       if (firstIdx < 0) {
         first = v
@@ -1209,6 +1322,16 @@ export const wrapClsx = (
     }
     if (truthy === 0) return ""
     if (truthy === 1) return mergeString(first) // cheap path; chain untouched
+    if (hasResolvedValue) {
+      // the probes above saw the raw objects; retry them over the resolved
+      // strings before paying for the bucket walk
+      if (pred !== null && matchN(pred, vals)) {
+        lastHit = pred
+        return pred.r
+      }
+      if (lastHit !== null && lastHit !== pred && matchN(lastHit, vals))
+        return lastHit.r
+    }
     let bucket = argCache.get(first)
     if (bucket === undefined) {
       bucket = prevArgCache.get(first)
@@ -1238,6 +1361,10 @@ export const wrapClsx = (
         joined += " " + (v as string)
         a.push(v as string)
       }
+      // a first sighting is merged straight through: no dictionary lookup
+      // on a fresh key, no cache entry anywhere, chain left untouched. A
+      // repeat pays the lookup once and caches like before.
+      if (!seenBefore(joined)) return mergeUncached(joined)
       hit = {
         r: mergeString(joined),
         t: a.length,
@@ -1248,7 +1375,11 @@ export const wrapClsx = (
         n: null,
       }
       if (bucket === undefined) argCache.set(first, (bucket = []))
-      if (bucket.length >= 8) bucket.shift()
+      // a component's base string is the first arg at every usage site, so
+      // one key can carry dozens of tuples (54 in the largest corpus repo,
+      // more once per-site className props count); a tight cap evicts them
+      // faster than the sequence chain can learn them, at ~40x per call
+      if (bucket.length >= 256) bucket.shift()
       bucket.push(hit)
       // two-generation rotation: a full generation ages out wholesale
       // instead of clearing everything; hot buckets get promoted on use,
@@ -1263,6 +1394,13 @@ export const wrapClsx = (
     lastHit = hit
     return hit.r
   }
+
+  // cn([a, b]) is cn(a, b) under clsx's flattening, so a lone array takes
+  // the arg path and its stable element identities hit the cache
+  const mergeSingleValue = (value: ClassValue): string =>
+    Array.isArray(value)
+      ? resolveArgs(value.slice(), false)
+      : mergeString(resolveValue(value, true))
 
   // named params make the hot path three register reads instead of three
   // `arguments` element loads; modules are strict, so params never alias
@@ -1292,9 +1430,7 @@ export const wrapClsx = (
       return resolveArgs([v0, v1, v2], true)
     }
     if (nArgs === 1)
-      return mergeString(
-        typeof v0 === "string" ? v0 : resolveValue(v0 as ClassValue, true)
-      )
+      return typeof v0 === "string" ? mergeString(v0) : mergeSingleValue(v0)
     // 4+ arity: probe predictions in place over `arguments` (indexed
     // reads only, so it never materializes) — a predicted render-loop
     // call allocates nothing. Only a genuine miss copies into an array
@@ -1356,5 +1492,7 @@ export const createCn = (
   tables: Tables,
   validatorImpls?: ValidatorImpls,
   options?: EngineOptions
-): CnFunction =>
-  wrapClsx(createEngine(tables, validatorImpls, options).mergeString)
+): CnFunction => {
+  const engine = createEngine(tables, validatorImpls, options)
+  return wrapClsx(engine.mergeString, engine)
+}

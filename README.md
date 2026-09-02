@@ -15,6 +15,8 @@ cn("px-2 py-1", isActive && "bg-blue-500", { "text-white": isActive })
 Vue, Svelte, Solid, Astro, or plain server templates, and runs in browsers,
 Node, Bun, Deno, and edge runtimes.
 
+`cn` is built and maintained by [aidenybai](https://x.com/aidenybai) and [shadcn](https://x.com/shadcn).
+
 ## Install
 
 ```bash
@@ -68,7 +70,7 @@ so your bundle only carries one implementation.
 ## How much faster?
 
 The following benchmarks compare `cn` against `clsx` + `tailwind-merge`,
-which is what most projects run today, and against cnfast.
+which is what most projects run today.
 
 We ran each library through every workload in its own isolated process with
 its own warmup, and kept the best of 5 runs.
@@ -76,26 +78,30 @@ its own warmup, and kept the best of 5 runs.
 To see the results for yourself, run `pnpm bench`. The methodology is
 in [docs/how-it-works.md](https://github.com/shadcn-ui/cn/blob/main/docs/how-it-works.md#benchmark-methodology).
 
-Bold marks the fastest implementation on each row (both, when tied).
-
-| scenario                                                   | clsx + tailwind-merge |   cnfast² |         cn | faster³ |
-| ---------------------------------------------------------- | --------------------: | --------: | ---------: | ------: |
-| the call your components make most¹                        |                320 ns | **10 ns** |  **10 ns** |     30× |
-| same classes as last render (cache hit)                    |                 14 ns |  **7 ns** |   **7 ns** |    1.9× |
-| typical component strings, warm                            |                 13 ns |  **6 ns** |       7 ns |    1.9× |
-| thousands of recurring strings (a real repo's working set) |                2.4 µs | **13 ns** |      14 ns |    172× |
-| cold render, many arbitrary values                         |                3.4 µs |    1.9 µs | **1.1 µs** |    3.0× |
-| cold render, SSR-style unique strings                      |                2.3 µs |    555 ns | **360 ns** |    6.4× |
-| very first call (page load)                                |                3.2 ms |    4.3 ms | **0.4 ms** |      7× |
+| scenario                                                   | clsx + tailwind-merge |     cn | faster² |
+| ---------------------------------------------------------- | --------------------: | -----: | ------: |
+| the call your components make most¹                        |                320 ns |  10 ns |     30× |
+| same classes as last render (cache hit)                    |                 14 ns |   7 ns |    1.9× |
+| typical component strings, warm                            |                 13 ns |   7 ns |    1.9× |
+| thousands of recurring strings (a real repo's working set) |                2.4 µs |  14 ns |    172× |
+| cold render, many arbitrary values                         |                3.4 µs | 1.1 µs |    3.0× |
+| cold render, SSR-style unique strings                      |                2.3 µs | 360 ns |    6.4× |
+| very first call (page load)                                |                3.2 ms | 0.4 ms |      7× |
 
 ¹ `cn(base, variant, condition && extra)` with stable class strings. This is
 the shape almost every component call has. `cn` learns repeated call
 sequences, so a render loop's calls verify by identity and skip the work
 entirely. The headline rounds down.
 
-² compared to cnfast 0.2.0.
+² compared to `clsx` + `tailwind-merge`.
 
-³ compared to `clsx` + `tailwind-merge`.
+### Real repositories
+
+The rows above are synthetic. `pnpm bench:corpus` replays every `cn()` call
+harvested from 58 open source codebases (144,265 calls) through each
+library, one isolated process per library and repository, and prints the
+per-repository table. Geometric mean across the 58 repositories: `cn` is
+**37× faster** than `clsx` + `tailwind-merge`.
 
 `cn` ships the least JavaScript to parse in every setup, 26 KB minified.
 
