@@ -13,9 +13,19 @@ cn("px-2 py-1", isActive && "bg-blue-500", { "text-white": isActive })
 
 `cn` has zero dependencies and is framework-agnostic: it works with React,
 Vue, Svelte, Solid, Astro, or plain server templates, and runs in browsers,
-Node, Bun, Deno, and edge runtimes.
+Node, Bun, Deno, and edge runtimes. **It works in any Tailwind CSS project. You don't need shadcn/ui.**
 
 `cn` is built and maintained by [aidenybai](https://x.com/aidenybai) and [shadcn](https://x.com/shadcn).
+
+## Can I use this today?
+
+Yes. You can replace `tailwind-merge` and `clsx` with `cn` today. It's a drop-in replacement.
+
+Here's a command to migrate:
+
+```bash
+npx shadcn@latest migrate cn
+```
 
 ## Install
 
@@ -50,6 +60,14 @@ export function Button({
 
 ### Existing shadcn/ui project
 
+#### Using the `shadcn` CLI
+
+```bash
+npx shadcn@latest migrate cn
+```
+
+#### Manually
+
 Your components already import `cn` from `@/lib/utils`. Replace the wrapper with the one from `cn`.
 
 ```diff
@@ -78,22 +96,20 @@ its own warmup, and kept the best of 5 runs.
 To see the results for yourself, run `pnpm bench`. The methodology is
 in [docs/how-it-works.md](https://github.com/shadcn-ui/cn/blob/main/docs/how-it-works.md#benchmark-methodology).
 
-| scenario                                                   | clsx + tailwind-merge |     cn | faster² |
-| ---------------------------------------------------------- | --------------------: | -----: | ------: |
-| the call your components make most¹                        |                320 ns |  10 ns |     30× |
-| same classes as last render (cache hit)                    |                 14 ns |   7 ns |    1.9× |
-| typical component strings, warm                            |                 13 ns |   7 ns |    1.9× |
-| thousands of recurring strings (a real repo's working set) |                2.4 µs |  14 ns |    172× |
-| cold render, many arbitrary values                         |                3.4 µs | 1.1 µs |    3.0× |
-| cold render, SSR-style unique strings                      |                2.3 µs | 360 ns |    6.4× |
-| very first call (page load)                                |                3.2 ms | 0.4 ms |      7× |
+| scenario                                                   | clsx + tailwind-merge |     cn | faster |
+| ---------------------------------------------------------- | --------------------: | -----: | -----: |
+| the call your components make most¹                        |                320 ns |  10 ns |    30× |
+| same classes as last render (cache hit)                    |                 14 ns |   7 ns |   1.9× |
+| typical component strings, warm                            |                 13 ns |   7 ns |   1.9× |
+| thousands of recurring strings (a real repo's working set) |                2.4 µs |  14 ns |   172× |
+| cold render, many arbitrary values                         |                3.4 µs | 1.1 µs |   3.0× |
+| cold render, SSR-style unique strings                      |                2.3 µs | 360 ns |   6.4× |
+| very first call (page load)                                |                3.2 ms | 0.4 ms |     7× |
 
 ¹ `cn(base, variant, condition && extra)` with stable class strings. This is
 the shape almost every component call has. `cn` learns repeated call
 sequences, so a render loop's calls verify by identity and skip the work
-entirely. The headline rounds down.
-
-² compared to `clsx` + `tailwind-merge`.
+entirely.
 
 ### Real repositories
 
