@@ -2,6 +2,7 @@ name: Bench
 
 # Non-gating: benchmarks on shared CI runners are directional, not decisive.
 on:
+  pull_request:
   workflow_dispatch:
   schedule:
     - cron: "0 6 * * 1"
@@ -18,5 +19,8 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm run build
-      - run: node packages/conformance/bench/bench.mjs
-      - run: node packages/conformance/bench/corpus.mjs
+      - name: pr size + performance report
+        run: pnpm run report
+      - name: real-repository corpus
+        if: github.event_name != 'pull_request'
+        run: node packages/conformance/bench/corpus.mjs

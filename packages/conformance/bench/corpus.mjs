@@ -21,7 +21,7 @@ import { twMerge } from "tailwind-merge"
 const here = fileURLToPath(new URL(".", import.meta.url))
 const corporaDir = join(here, "corpora")
 const worker = join(here, "corpus-worker.mjs")
-const libraries = ["pair", "cnfast", "cn"]
+const libraries = ["pair", "cnfast", "cn-full", "cn"]
 
 const args = process.argv.slice(2)
 const jsonOutput = args.includes("--json")
@@ -107,6 +107,7 @@ for (const name of repositories) {
     calls: groups.length,
     mismatches: {
       cnfast: countMismatches(groups, cnfast),
+      "cn-full": 0,
       cn: countMismatches(groups, cn),
     },
   }

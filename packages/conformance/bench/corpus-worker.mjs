@@ -19,6 +19,11 @@ const loadLibrary = async () => {
   }
   if (library === "cnfast") return (await import("cnfast")).cn
   if (library === "cn") return (await import("cn")).cn
+  if (library === "cn-full") {
+    const { createCn } = await import("cn/engine")
+    const tables = (await import("cn/tables")).default
+    return createCn(tables)
+  }
   throw new Error("unknown library " + library)
 }
 

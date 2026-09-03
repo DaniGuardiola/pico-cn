@@ -153,6 +153,8 @@ const repeated = [
 // the regime real repos live in (and the one that caught the doorkeeper
 // regression: recurring sets bigger than the admission filter must still warm)
 const workset = ssrUnique.slice(0, 8000)
+const workset256 = ssrUnique.slice(0, 256)
+const workset257 = ssrUnique.slice(0, 257)
 
 const workloads = {
   short: { arr: shortTypical, iters: 2_000_000 },
@@ -160,6 +162,8 @@ const workloads = {
   arb: { arr: arbHeavy, iters: 300_000 },
   repeat: { arr: repeated, iters: 5_000_000 },
   ssr: { arr: ssrUnique, iters: 600_000 },
+  workset256: { arr: workset256, iters: 2_000_000 },
+  workset257: { arr: workset257, iters: 2_000_000 },
   workset: { arr: workset, iters: 2_000_000 },
 }
 
@@ -174,6 +178,11 @@ const loadImpl = async () => {
   }
   if (implName === "cnfast") return (await import("cnfast")).cn
   if (implName === "cn") return (await import("cn")).twMerge
+  if (implName === "cn-full") {
+    const { createCn } = await import("cn/engine")
+    const tables = (await import("cn/tables")).default
+    return createCn(tables)
+  }
   if (implName === "cn-nocache") {
     const { createEngine } = await import("cn/engine")
     const tables = (await import("cn/tables")).default

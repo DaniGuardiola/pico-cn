@@ -32,8 +32,12 @@ const measure = async (label, entrySource) => {
 }
 
 const rows = [
-  await measure("cn (default entry)", `export { cn } from 'cn'`),
-  await measure("cn (twMerge only)", `export { twMerge } from 'cn'`),
+  await measure("pico-cn", `export { cn } from 'cn'`),
+  await measure("pico-cn (twMerge)", `export { twMerge } from 'cn'`),
+  await measure(
+    "upstream cn engine",
+    `import { createCn } from 'cn/engine'; import tables from 'cn/tables'; export const cn = createCn(tables)`
+  ),
   await measure("tailwind-merge", `export { twMerge } from 'tailwind-merge'`),
   await measure(
     "clsx+tailwind-merge",
@@ -50,55 +54,19 @@ for (const r of rows)
     "min+gz"
   )
 
-// Three-part gate encoding the shipped size claims:
-//   1. parse cost (raw minified) strictly smaller than cnfast — the README's
-//      "least JavaScript to parse" claim. Vs cnfast 0.2.0 (measured
-//      2026-09-02) parse is ~35% under; the earlier "~13% under" figure was
-//      vs a smaller pre-0.2.0 release
-//   2. transfer (min+gzip) within 8% of cnfast. History: the 5% band was
-//      retired 2026-09-01 when the arity-front arg cache and the
-//      two-generation doorkeeper spent ~210 B of gzip to make the 30×
-//      headline reproducible and fix a 6-15× real-repo corpus regression.
-//      Vs cnfast 0.2.0 gzip is ~25% under, so this band is currently slack;
-//      the absolute budget below is the binding constraint
-//   3. absolute transfer budget: 10,800 B (creep tripwire); raised from
-//      10,500 on 2026-09-01 for the int32 epoch guard (~20 B), to 10,650
-//      the same day for routing object/array args through the arg cache,
-//      the lone-array arg path, and the JSC-only thin cache front (~85 B
-//      on CI's zlib; 0.34x object args, 0.10x lone arrays, 0.62x recurring
-//      strings on bun), to 10,750 for doorkeeper-gated caching of joined
-//      strings (~130 B; 0.16x-0.43x on sites with a dynamic arbitrary
-//      value, 0.83x cold arbitrary-value renders), and to 10,800 for the
-//      JSC-only Map substrate of the whole-string cache (~50 B;
-//      0.27x-0.31x on 8k-string working sets on bun), and to 10,950 on
-//      2026-09-02 for the claim-table fix (~130 B: Float64 claim keys so
-//      group ids cannot alias, a tables-derived claim factor so wide
-//      custom conflict groups cannot fill the table, and a per-merge id
-//      guard), and to 11,000 on 2026-09-02 for Unicode whitespace parity
-//      (~77 B: \s-complete separator scan and twJoin array-like values)
 const ours = rows[0]
-const cnfast = rows[4]
+const pair = rows.find((row) => row.label === "clsx+tailwind-merge")
 let fail = false
-if (ours.min >= cnfast.min) {
-  console.error(
-    `SIZE GATE FAIL (parse): cn ${ours.min} >= cnfast ${cnfast.min}`
-  )
+if (ours.gz >= pair.gz) {
+  console.error(`SIZE GATE FAIL: pico-cn ${ours.gz} >= pair ${pair.gz}`)
   fail = true
 }
-if (ours.gz > cnfast.gz * 1.08) {
-  console.error(
-    `SIZE GATE FAIL (gzip band): cn ${ours.gz} > cnfast ${cnfast.gz} * 1.08`
-  )
-  fail = true
-}
-if (ours.gz > 11000) {
-  console.error(`SIZE GATE FAIL (budget): cn ${ours.gz} > 11000`)
+if (ours.gz > 4500) {
+  console.error(`SIZE GATE FAIL: pico-cn ${ours.gz} > 4500 byte budget`)
   fail = true
 }
 if (fail) process.exit(1)
-console.log(
-  `size gate ok: parse ${ours.min} < ${cnfast.min}; gzip ${ours.gz} (cnfast ${cnfast.gz}, band ${Math.round(cnfast.gz * 1.08)}); budget 11000`
-)
+console.log(`size gate ok: ${ours.gz} gzip < ${pair.gz} pair; budget 4500`)
 
 // ---------------------------------------------------------------------------
 // Size experiments log (metric: min+gzip of the default entry). Kept here so

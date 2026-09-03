@@ -9,11 +9,12 @@
     "bench": "node bench/bench.mjs",
     "bench:corpus": "node bench/corpus.mjs",
     "size": "node scripts/size.mjs",
+    "report": "node scripts/ci-report.mjs",
     "vendor-config": "node scripts/vendor-config.mjs",
     "speedlab": "node speedlab/build.mjs"
   },
   "dependencies": {
-    "cn": "workspace:*"
+    "cn": "workspace:pico-cn@*"
   },
   "devDependencies": {
     "clsx": "^2.1.1",

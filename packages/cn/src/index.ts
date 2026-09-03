@@ -1,18 +1,5 @@
-import tables from "./tables.generated.js"
-import { clsx, createEngine, twJoin, wrapClsx } from "./engine.js"
-
-const instance = /* @__PURE__ */ createEngine(tables)
-
-/**
- * Merge Tailwind CSS classes with clsx-style arguments (strings, arrays,
- * objects, conditionals). Drop-in replacement for `twMerge(clsx(...))`.
- */
-export const cn = /* @__PURE__ */ wrapClsx(instance.mergeString, instance)
-
-/** tailwind-merge–compatible variadic merge (strings + nested arrays). */
-export const twMerge = instance.merge
-
-export { clsx, createEngine, twJoin }
+export { clsx, cn, twJoin, twMerge } from "./pico.js"
+export { createEngine } from "./engine.js"
 
 // Custom configs live at "cn/config" (createCn, createTwMerge, fromTheme,
 // validators) — a separate entry so the compiler and default-config data

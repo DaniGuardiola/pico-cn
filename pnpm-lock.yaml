@@ -48,7 +48,7 @@ importers:
   packages/conformance:
     dependencies:
       cn:
-        specifier: workspace:*
+        specifier: workspace:pico-cn@*
         version: link:../cn
     devDependencies:
       clsx:

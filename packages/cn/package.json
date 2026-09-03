@@ -1,11 +1,11 @@
 {
-  "name": "cn",
-  "version": "0.2.4",
-  "description": "Fast, small, compiled class-name merging for Tailwind CSS. Drop-in replacement for clsx + tailwind-merge.",
+  "name": "pico-cn",
+  "version": "0.1.0",
+  "description": "Size-first Tailwind class merging with clsx-compatible inputs.",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/shadcn-ui/cn.git",
+    "url": "git+https://github.com/DaniGuardiola/pico-cn.git",
     "directory": "packages/cn"
   },
   "type": "module",
@@ -86,6 +86,7 @@
     "postpack": "node -e \"const fs=require('fs');fs.rmSync('README.md',{force:true});fs.rmSync('LICENSE',{force:true})\""
   },
   "keywords": [
+    "pico-cn",
     "tailwind",
     "tailwindcss",
     "tailwind-merge",

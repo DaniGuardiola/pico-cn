@@ -9,6 +9,7 @@ export default defineConfig({
     config: "src/config.ts",
     compiler: "src/compiler.ts",
     lite: "src/lite.ts",
+    pico: "src/pico.ts",
   },
   format: ["esm", "cjs"],
   dts: true,

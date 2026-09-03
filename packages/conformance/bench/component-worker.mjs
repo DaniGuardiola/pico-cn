@@ -15,6 +15,11 @@ const loadImpl = async () => {
   }
   if (implName === "cnfast") return (await import("cnfast")).cn
   if (implName === "cn") return (await import("cn")).cn
+  if (implName === "cn-full") {
+    const { createCn } = await import("cn/engine")
+    const tables = (await import("cn/tables")).default
+    return createCn(tables)
+  }
   throw new Error("unknown impl " + implName)
 }
 

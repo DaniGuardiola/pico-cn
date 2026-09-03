@@ -1,206 +1,104 @@
-# cn
+# pico-cn
 
-`cn` is a [new engine](https://github.com/shadcn-ui/cn/blob/main/docs/how-it-works.md) for Tailwind class merging and
-conflict resolution. It replaces `tailwind-merge` and `clsx`. Same APIs.
-Full parity. **And it is [30× faster](#how-much-faster).**
+Experimental, size-first alternative to `clsx` + `tailwind-merge`, based on
+[`shadcn-ui/cn`](https://github.com/shadcn-ui/cn) and my size-first work on
+[`tw-merge`](https://github.com/DaniGuardiola/tw-merge) from three years ago
+(2023).
 
-```ts
-import { cn } from "cn"
-
-// conditional joining (like clsx) + conflict resolution (like tailwind-merge)
-cn("px-2 py-1", isActive && "bg-blue-500", { "text-white": isActive })
-```
-
-`cn` has zero dependencies and is framework-agnostic: it works with React,
-Vue, Svelte, Solid, Astro, or plain server templates, and runs in browsers,
-Node, Bun, Deno, and edge runtimes. **It works in any Tailwind CSS project. You don't need shadcn/ui.**
-
-`cn` is built and maintained by [aidenybai](https://x.com/aidenybai) and [shadcn](https://x.com/shadcn).
-
-## Can I use this today?
-
-Yes. You can replace `tailwind-merge` and `clsx` with `cn` today. It's a drop-in replacement.
-
-Here's a command to migrate:
-
-```bash
-npx shadcn@latest migrate cn
-```
-
-## Install
-
-```bash
-npm i cn
-```
-
-### New project
-
-Import it and go. Nothing to configure:
-
-```tsx
-import { cn } from "cn"
-
-export function Button({
-  className,
-  active,
-  ...props
-}: React.ComponentProps<"button"> & { active?: boolean }) {
-  return (
-    <button
-      className={cn(
-        "rounded-md px-4 py-2 text-sm",
-        active && "bg-primary",
-        className
-      )}
-      {...props}
-    />
-  )
-}
-```
-
-### Existing shadcn/ui project
-
-#### Using the `shadcn` CLI
-
-```bash
-npx shadcn@latest migrate cn
-```
-
-#### Manually
-
-Your components already import `cn` from `@/lib/utils`. Replace the wrapper with the one from `cn`.
-
-```diff
-// lib/utils.ts
-- import { clsx, type ClassValue } from "clsx";
-- import { twMerge } from "tailwind-merge";
-
-- export function cn(...inputs: ClassValue[]) {
--   return twMerge(clsx(inputs));
-- }
-+ export { cn } from "cn";
-```
-
-Then remove `clsx` and `tailwind-merge` from your dependencies. If other
-packages still import them, [alias them to `cn`](https://github.com/shadcn-ui/cn/blob/main/docs/aliasing.md)
-so your bundle only carries one implementation.
-
-## How much faster?
-
-The following benchmarks compare `cn` against `clsx` + `tailwind-merge`,
-which is what most projects run today.
-
-We ran each library through every workload in its own isolated process with
-its own warmup, and kept the best of 5 runs.
-
-To see the results for yourself, run `pnpm bench`. The methodology is
-in [docs/how-it-works.md](https://github.com/shadcn-ui/cn/blob/main/docs/how-it-works.md#benchmark-methodology).
-
-| scenario                                                   | clsx + tailwind-merge |     cn | faster |
-| ---------------------------------------------------------- | --------------------: | -----: | -----: |
-| the call your components make most¹                        |                320 ns |  10 ns |    30× |
-| same classes as last render (cache hit)                    |                 14 ns |   7 ns |   1.9× |
-| typical component strings, warm                            |                 13 ns |   7 ns |   1.9× |
-| thousands of recurring strings (a real repo's working set) |                2.4 µs |  14 ns |   172× |
-| cold render, many arbitrary values                         |                3.4 µs | 1.1 µs |   3.0× |
-| cold render, SSR-style unique strings                      |                2.3 µs | 360 ns |   6.4× |
-| very first call (page load)                                |                3.2 ms | 0.4 ms |     7× |
-
-¹ `cn(base, variant, condition && extra)` with stable class strings. This is
-the shape almost every component call has. `cn` learns repeated call
-sequences, so a render loop's calls verify by identity and skip the work
-entirely.
-
-### Real repositories
-
-The rows above are synthetic. `pnpm bench:corpus` replays every `cn()` call
-harvested from 58 open source codebases (144,265 calls) through each
-library, one isolated process per library and repository, and prints the
-per-repository table. Geometric mean across the 58 repositories: `cn` is
-**37× faster** than `clsx` + `tailwind-merge`.
-
-`cn` ships the least JavaScript to parse in every setup, 26 KB minified.
-
-If you want an even smaller bundle with the same performance, see
-[`cn build`](https://github.com/shadcn-ui/cn/blob/main/docs/build-setup.md).
-
-## Custom themes
-
-`cn/config` accepts the same `{ extend, override, prefix }` shape, under the
-same name:
+`pico-cn` keeps the familiar API while replacing the default compiled-table
+engine with a compact static classifier. Goal: minimum shipped JavaScript,
+accepting slower cold calls and a small number of compatibility gaps.
 
 ```ts
-// before
-import { extendTailwindMerge } from "tailwind-merge"
+import { cn } from "pico-cn"
 
-const twMerge = extendTailwindMerge({
-  extend: { classGroups: { "font-size": [{ text: ["hero"] }] } },
-})
+cn("px-2 py-1", active && "bg-blue-500", { "text-white": active })
 ```
 
-```ts
-// after
-import { createCn } from "cn/config"
+## Current results
 
-const cn = createCn({
-  extend: { classGroups: { "font-size": [{ text: ["hero"] }] } },
-})
+Measured with Node 24 on 2026-09-03. Run `pnpm size` and `pnpm bench` to measure
+your machine.
+
+| implementation        | minified | minified + gzip |
+| --------------------- | -------: | --------------: |
+| pico-cn               |  ~9.5 KB |         ~3.6 KB |
+| upstream cn           |   ~27 KB |          ~11 KB |
+| clsx + tailwind-merge |   ~27 KB |         ~8.6 KB |
+
+## Performance
+
+Like upstream `cn`, each implementation and workload runs in an isolated
+process with its own warmup. Results use the best of five timed blocks.
+
+| scenario                              | pico-cn | clsx + tailwind-merge | pico vs pair | upstream cn | pico vs cn  |
+| ------------------------------------- | ------: | --------------------: | ------------ | ----------: | ----------- |
+| common component call¹                |  104 ns |               55.5 ns | 1.9× slower  |      5.9 ns | 18× slower  |
+| same classes as last render           |  8.5 ns |                9.8 ns | 1.2× faster  |      4.8 ns | 1.8× slower |
+| 256 recurring strings (cache fits)    | 11.9 ns |               12.6 ns | 1.1× faster  |      4.9 ns | 2.4× slower |
+| 257 recurring strings (cache cliff)   | 3.25 µs |               10.6 ns | 307× slower  |      5.0 ns | 650× slower |
+| 8k recurring strings                  | 3.43 µs |               1.69 µs | 2.0× slower  |     11.1 ns | 309× slower |
+| cold render, many arbitrary values    | 3.90 µs |               2.40 µs | 1.6× slower  |      690 ns | 5.6× slower |
+| cold render, SSR-style unique strings | 3.47 µs |               1.75 µs | 2.0× slower  |      283 ns | 12× slower  |
+
+¹ `cn(base, variant, condition && extra)` with stable class strings.
+
+These numbers show the intended trade-off: pico-cn dramatically cuts shipped
+JavaScript and remains competitive while its 256-entry cache fits the working
+set. Crossing that boundary causes wholesale cache churn; upstream `cn` also
+has a much faster uncached engine and a larger cache. Component calls, cold
+inputs, and large working sets therefore expose substantial slowdowns.
+Microbenchmark timings vary by machine; run `pnpm bench` for local results.
+
+Upstream conformance suite remains intact:
+
+- 56,351 / 56,353 main differential checks pass (99.996%).
+- clsx, clsx/lite, and twJoin parity: 60,005 / 60,005.
+- custom config: 5,061 / 5,061.
+- CLI: 57 / 57.
+- hardening and bounds regressions: 5 / 5.
+- 300,000-case grammar fuzz suite stays visible in CI and currently reports
+  expected mismatches for unsupported or deliberately simplified edge cases.
+
+## Trade-offs vs full `cn`
+
+`pico-cn` optimizes shipped size, not raw speed or exhaustive compatibility.
+Compared with full upstream `cn`:
+
+- its default bundle is about 3.5 KB gzip instead of 11 KB;
+- its compact classifier is slower, especially for cold inputs or working sets
+  larger than its 256-entry cache;
+- it covers common Tailwind v4 utilities and passes 99.996% of the main
+  differential suite, but full `cn` covers the remaining edge cases too;
+- its default path does not expose full configuration. Importing
+  `pico-cn/config` or `pico-cn/engine` restores the full engine and its advanced
+  configuration support, along with its larger size.
+
+## Commands
+
+```sh
+pnpm install
+pnpm build
+pnpm test
+pnpm size
+pnpm bench
+pnpm report
 ```
 
-Custom validator functions work as-is. `fromTheme`, `validators`,
-`mergeConfigs`, and `defaultConfig` are exported from `cn/config`. Tailwind
-v4 prefixes are supported: `createCn({ prefix: "tw" })`.
+`pnpm test` intentionally preserves upstream's strict parity behavior and can
+fail when a documented size trade-off is exercised. GitHub Actions runs core
+gates separately and presents full compatibility failures without hiding them.
 
-## Coming from tailwind-merge
+## CI
 
-`cn` produces the same output as tailwind-merge for every input. We verify
-this with 356,000 differential tests.
+- core tests run on Node 20, 22, and 24;
+- compatibility suites run as visible, non-blocking reports;
+- every pull request gets bundle-size and performance output in its workflow
+  summary;
+- scheduled runs replay 144,265 real calls from 58 repositories.
 
-Every export maps to the same name or a familiar one:
+## License and credits
 
-| tailwind-merge               | cn                                     |
-| ---------------------------- | -------------------------------------- |
-| `twMerge(...)`               | `twMerge(...)` from `"cn"`, identical  |
-| `twJoin(...)`                | `twJoin(...)` from `"cn"`, identical   |
-| `extendTailwindMerge(ext)`   | same name, from `"cn/config"`          |
-| `createTailwindMerge(fn)`    | `createTwMerge(fn)` from `"cn/config"` |
-| `getDefaultConfig()`         | `defaultConfig()` from `"cn/config"`   |
-| `fromTheme`, `validators`    | same names, from `"cn/config"`         |
-| `mergeConfigs`               | same name, from `"cn/config"`          |
-| `experimentalParseClassName` | not supported                          |
-
-## Gotchas
-
-- `cn` supports Tailwind CSS v4, like tailwind-merge v3. On Tailwind v3,
-  stay with tailwind-merge v2.
-- Classes that merely _look like_ Tailwind utilities (`text-2xs`) are
-  treated as Tailwind utilities. Same behavior and guidance as
-  [tailwind-merge's docs](https://github.com/dcastil/tailwind-merge/blob/main/docs/limitations.md).
-- With [`cn build`](https://github.com/shadcn-ui/cn/blob/main/docs/build-setup.md), dynamically constructed class names (`"p-" + size`) can't
-  be detected. Same rule as Tailwind itself. Use `--safelist`.
-- The CLI needs Node 20+.
-
-## API
-
-- **`cn`**: `cn(...inputs)`, `twMerge(...)`, `twJoin(...)`, `clsx(...)`
-- **`cn/config`**: `createCn(ext?)`, `extendTailwindMerge(ext?)`,
-  `createTwMerge(ext?)`, `fromTheme`, `validators`, `defaultConfig()`,
-  `mergeConfigs(base, ext)`
-- **`cn/engine`**: `createCn(tables, ...)`, `createEngine(tables, ...)` for
-  build-time compiled tables
-- **`cn/lite`**: `clsx(...)`, strings-only join (`clsx/lite` parity)
-- **CLI**: `npx cn build --help`
-
-## Credits
-
-- `cn`'s merge engine, compiler, and table format are original work.
-- The package's conflict-resolution **semantics** intentionally match those of
-  [tailwind-merge](https://github.com/dcastil/tailwind-merge) by Dany Castillo
-  (MIT licensed), and the default tables it ships are compiled from
-  tailwind-merge's default configuration.
-- The `clsx`-compatible join layer implements the argument semantics of
-  [clsx](https://github.com/lukeed/clsx) by Luke Edwards (MIT licensed).
-- The argument-identity cache for repeated variadic calls re-implements an optimization pioneered by
-  [cnfast](https://github.com/aidenybai/cnfast) by Aiden Bai (MIT licensed).
-
-Thank you to all three authors.
+MIT. Original `cn` engine and test infrastructure by shadcn-ui contributors.
+Size-first classifier approach based on my work on `tw-merge` from three years
+ago (2023). See repository history and `LICENSE` for details.

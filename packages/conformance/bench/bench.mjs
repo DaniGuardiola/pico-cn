@@ -5,12 +5,21 @@ import { execFileSync } from "node:child_process"
 import { fileURLToPath } from "node:url"
 
 const worker = fileURLToPath(new URL("./worker.mjs", import.meta.url))
-const impls = ["tailwind-merge", "cnfast", "cn", "cn-nocache"]
+const impls = [
+  "pair",
+  "tailwind-merge",
+  "cnfast",
+  "cn-full",
+  "cn",
+  "cn-nocache",
+]
 const workloads = [
   ["short", "short typical strings (16 recurring, warm caches)"],
   ["long", "long variant-heavy strings (64 recurring, ~30 tokens)"],
   ["arb", "arbitrary-heavy, 50k unique strings (fully cold)"],
   ["repeat", "repeated identical call (best-case cache hit)"],
+  ["workset256", "256 recurring strings (pico cache fits)"],
+  ["workset257", "257 recurring strings (pico cache cliff)"],
   ["ssr", "50k unique strings, recurring vocabulary (SSR-like)"],
   ["workset", "8k distinct recurring strings (real-repo working set)"],
 ]
@@ -48,7 +57,7 @@ const componentModes = [
 for (const [mode, label] of componentModes) {
   console.log(`\n• ${label}`)
   const rows = []
-  for (const impl of ["pair", "cnfast", "cn"]) {
+  for (const impl of ["pair", "cnfast", "cn-full", "cn"]) {
     const out = execFileSync(process.execPath, [componentWorker, impl, mode], {
       encoding: "utf8",
     })
