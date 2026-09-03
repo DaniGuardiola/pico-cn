@@ -279,6 +279,51 @@ try {
     expect("content-comma-exit", r.status === 0, r.stderr)
   }
 
+  // ---- output files inside content globs are not scanned -------------------
+  for (const { label, output, link } of [
+    { label: "self-scan", output: "src/cn-tables.ts" },
+    {
+      label: "self-scan-symlink",
+      output: "generated/cn-tables.ts",
+      link: "src/cn-tables.ts",
+    },
+  ]) {
+    const selfDir = join(dir, label)
+    mkdirSync(join(selfDir, "src"), { recursive: true })
+    mkdirSync(join(selfDir, "expected"), { recursive: true })
+    mkdirSync(join(selfDir, "generated"), { recursive: true })
+    writeFileSync(
+      join(selfDir, "src", "button.tsx"),
+      `const button = "rounded-md px-4 py-2 text-sm bg-primary"`
+    )
+    const contentArgs = [
+      "build",
+      "--cwd",
+      selfDir,
+      "--content",
+      "src/**/*.{ts,tsx}",
+    ]
+    const expected = run([...contentArgs, "-o", "expected/cn-tables.ts", "-q"])
+    expect(`${label}-clean-exit`, expected.status === 0, expected.stderr)
+
+    const full = run(["build", "--cwd", selfDir, "--full", "-o", output, "-q"])
+    expect(`${label}-full-exit`, full.status === 0, full.stderr)
+    if (link) symlinkSync(join(selfDir, output), join(selfDir, link))
+
+    const subset = run([...contentArgs, "-o", output])
+    expect(`${label}-subset-exit`, subset.status === 0, subset.stderr)
+    expect(
+      `${label}-output-excluded`,
+      subset.stdout.includes("scanned 1 files"),
+      subset.stdout
+    )
+    expect(
+      `${label}-deterministic`,
+      readFileSync(join(selfDir, output), "utf8") ===
+        readFileSync(join(selfDir, "expected", "cn-tables.ts"), "utf8")
+    )
+  }
+
   // ---- error paths use the cn: prefix and exit 1 ----------------------------
   const errCase = (label, argv, needle) => {
     const r = run(argv)
